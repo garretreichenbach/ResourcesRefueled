@@ -1,0 +1,58 @@
+plugins {
+	id 'java'
+	id 'application'
+}
+
+def starmadeDirectory = project.property("starmade_root")
+def modName = project.property("mod_name")
+group = project.property('mod_org_id')
+version = project.property('mod_version')
+mainClassName = group + modName
+
+repositories {
+	mavenCentral()
+	maven {
+		url "https://repo.spongepowered.org/repository/maven-public/"
+	}
+}
+
+dependencies {
+	compileOnly(files(starmadeDirectory + "StarMade.jar"))
+	compileOnly(fileTree(dir: (starmadeDirectory + "lib"), include: "*.jar"))
+	implementation(fileTree(dir: 'lib', include: '*.jar'))
+
+	implementation 'com.github.oshi:oshi-core:6.6.4'
+	implementation 'net.java.dev.jna:jna:5.14.0'
+	implementation 'net.java.dev.jna:jna-platform:5.14.0'
+
+	compileOnly 'org.spongepowered:mixin:0.8.7'
+	annotationProcessor 'org.spongepowered:mixin:0.8.7:processor'
+}
+
+compileJava.options.encoding = 'UTF-8'
+
+tasks.register("updateVersion") {
+	doLast {
+		def modJson = file('src/main/resources/mod.json')
+		def modJsonContent = modJson.getText()
+		modJsonContent = modJsonContent.replaceAll(/"version":\s*".*"/, "\"version\": \"" + version + "\"")
+		modJson.write(modJsonContent)
+	}
+}
+
+jar {
+	dependsOn("updateVersion")
+	duplicatesStrategy(DuplicatesStrategy.EXCLUDE)
+	destinationDirectory.set(file(starmadeDirectory + "mods"))
+	archiveFileName = modName + 'v' + getVersion() +  '.jar'
+	manifest.attributes('Main-Class': mainClassName)
+	from {
+		configurations.runtimeClasspath.collect {
+			if(!it.getPath().contains("StarMade") && it.getName().endsWith(".jar")) {
+				it.isDirectory() ? it : zipTree(it)
+			} else {
+				return null;
+			}
+		}
+	}
+}
