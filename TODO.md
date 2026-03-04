@@ -12,7 +12,7 @@ Register all new elements via `BlockConfig` in `ElementRegistry`, called from `R
 - ✅ `HeliogenRefineryController` — computer block, wired to refinery modules
 - ✅ `FluidTank` — generic pressurised fluid storage block (replaces `HeliogenTank`); Heliogen instance registered as `HELIOGEN_TANK` in `ElementRegistry`
 - ✅ `FluidPipe`, `FluidPump`, `FluidValve`, `FluidFilter` — pipe network blocks registered
-- ⬜ Block assembly recipes for all blocks (need adding in `postInitData` / a recipe manager)
+- ✅ Block assembly recipes — `RecipeManager` listens for `RRSRecipeAddEvent` and calls `RRSRecipeManager.addBlock` for all blocks
 - ⬜ Custom textures / icons for all elements (placeholder vanilla textures in use)
 - ✅ `ElementRegistry.isFluidTank()` helper — implemented
 
@@ -32,11 +32,11 @@ Passive Heliogen supply tied to star proximity, no zone maps required.
 ### 3. ✅ Extractor fuel consumption mixin
 Intercepts RRS's `ExtractorTickFastListener.onPreManufacture`.
 
-- ✅ `MixinExtractorTickListener` — `@Inject` at `HEAD`, checks inventory for filled canisters, consumes them and returns empties as the "recipe" side of the fuel loop
+- ✅ `MixinExtractorTickListener` — two injection points: `onPreManufacture` checks fuel availability and sets `FuelTickState`; `onProduceItem` consumes canisters once per completed extraction cycle (proportional to output quantity) and returns empties
 - ✅ `FuelTickState` — external holder for the per-tick unfueled flag (required because Mixin disallows non-private static members)
 - ✅ `HarvesterFuelEfficiencyListener` — reads `FuelTickState`, scales extraction power by `unfueled_extraction_efficiency` via `HarvesterStrengthUpdateEvent`
 - ✅ Registered in `resourcesrefueled.mixins.json`
-- ⬜ Void-system short-circuit (currently marks unfueled but does not cancel extraction outright — consider whether void systems should block entirely)
+- ✅ Void-system behaviour: no special handling needed in this mixin — RRS gates void extraction output; Condenser void block is in `SolarCondenserTickListener`
 
 ---
 
@@ -53,13 +53,13 @@ Hooks `ShipJumpEngageEvent`, cancels the vanilla jump, executes a custom `Sector
 
 ---
 
-### 5. 🟡 Solar Condenser production
+### 5. ✅ Solar Condenser production
 Star-proximity-boosted Anbaric + Parsyne → Heliogen Plasma conversion.
 
 - ✅ `HeliogenCondenser` block registered with `BlockConfig.newFactory`
 - ✅ Recipe stub in `HeliogenCondenser.postInitData` (Anbaric Vapor + Parsyne Plasma → Heliogen Plasma)
-- ⬜ `SolarCondenserTickListener` — `FactoryManufactureListener` that multiplies output by `SystemSheet.getTemperature(factoryEntity.getSector(...))` at runtime
-- ⬜ Register listener in `EventManager` via `FastListenerCommon`
+- ✅ `SolarCondenserTickListener` — `FactoryManufactureListener`; `onPreManufacture` blocks void systems entirely, `onProduceItem` adds bonus plasma scaled by `SystemSheet.getTemperature` × star class multiplier × `condenser_base_output` config
+- ✅ Register listener in `EventManager` via `FastListenerCommon.factoryManufactureListeners`
 
 ---
 

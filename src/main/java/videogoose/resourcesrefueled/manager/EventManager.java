@@ -11,9 +11,11 @@ import org.ithirahad.resourcesresourced.events.HarvesterStrengthUpdateEvent;
 import videogoose.resourcesrefueled.ResourcesRefueled;
 import videogoose.resourcesrefueled.element.ElementRegistry;
 import videogoose.resourcesrefueled.fuel.StellarFuelManager;
+import videogoose.resourcesrefueled.industry.RecipeManager;
 import videogoose.resourcesrefueled.listener.HarvesterFuelEfficiencyListener;
 import videogoose.resourcesrefueled.listener.SegmentPieceKillEvent;
 import videogoose.resourcesrefueled.listener.ShipJumpFuelListener;
+import videogoose.resourcesrefueled.listener.SolarCondenserTickListener;
 import videogoose.resourcesrefueled.systems.FluidTankSystemModule;
 
 public class EventManager {
@@ -21,8 +23,14 @@ public class EventManager {
 	public static SegmentPieceKillEvent killEvent;
 
 	public static void initialize(ResourcesRefueled instance) {
+		// Block assembly recipes (hooks RRSRecipeAddEvent, fired after RRS's own recipe pass)
+		RecipeManager.initialize(instance);
+
 		// Block kill listener (tank explosion handled here)
 		FastListenerCommon.segmentPieceKilledListeners.add(killEvent = new SegmentPieceKillEvent());
+
+		// Solar condenser proximity yield bonus + void-system block
+		FastListenerCommon.factoryManufactureListeners.add(new SolarCondenserTickListener());
 
 		StarLoader.registerListener(ManagerContainerRegisterEvent.class, new Listener<ManagerContainerRegisterEvent>() {
 

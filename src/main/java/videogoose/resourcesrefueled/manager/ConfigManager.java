@@ -10,6 +10,8 @@ public final class ConfigManager {
 			"debug_mode: false # If true, enables debug logging and features.",
 			"fuel_cost_per_strength_unit: 0.5 # Heliogen canisters consumed per unit of extractor strength per tick.",
 			"unfueled_extraction_efficiency: 0.3 # Fraction of normal extraction rate when running without Heliogen fuel (0.0-1.0).",
+			"condenser_base_output: 4 # Bonus Heliogen Plasma units produced per cycle at proximity 1.0 next to a normal star.",
+			"condenser_proximity_scale: true # If false, condenser output is flat regardless of star proximity (base recipe only + star class bonus).",
 			"ftl_fuel_per_sector: 1.0 # Heliogen canisters consumed per sector of FTL jump distance.",
 			"fuel_per_canister: 100.0 # Fluid units represented by one filled Heliogen Canister when drawing from a tank.",
 			"ftl_unfueled_cooldown_multiplier: 3.0 # Multiplier applied to FTL cooldown when jumping without fuel.",
@@ -56,6 +58,22 @@ public final class ConfigManager {
 			return Double.parseDouble(mainConfig.getString("unfueled_extraction_efficiency"));
 		} catch(Exception e) {
 			return 0.3;
+		}
+	}
+
+	public static int getCondenserBaseOutput() {
+		try {
+			return Integer.parseInt(mainConfig.getString("condenser_base_output"));
+		} catch(Exception e) {
+			return 4;
+		}
+	}
+
+	public static boolean isCondenserProximityScaled() {
+		try {
+			return Boolean.parseBoolean(mainConfig.getString("condenser_proximity_scale"));
+		} catch(Exception e) {
+			return true;
 		}
 	}
 
