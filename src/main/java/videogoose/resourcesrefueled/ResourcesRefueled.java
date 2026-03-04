@@ -1,9 +1,13 @@
 package videogoose.resourcesrefueled;
 
+import api.config.BlockConfig;
 import api.listener.events.controller.ClientInitializeEvent;
 import api.mod.StarMod;
+import org.schema.schine.resource.ResourceLoader;
+import videogoose.resourcesrefueled.element.ElementRegistry;
 import videogoose.resourcesrefueled.manager.ConfigManager;
 import videogoose.resourcesrefueled.manager.EventManager;
+import videogoose.resourcesrefueled.manager.ResourceManager;
 
 public final class ResourcesRefueled extends StarMod {
 
@@ -27,6 +31,22 @@ public final class ResourcesRefueled extends StarMod {
 	@Override
 	public void onClientCreated(ClientInitializeEvent event) {
 
+	}
+
+	@Override
+	public void onBlockConfigLoad(BlockConfig config) {
+		logInfo("Registering Heliogen elements...");
+		try {
+			ElementRegistry.registerElements();
+			logInfo("Heliogen elements registered successfully.");
+		} catch(Exception e) {
+			logException("[ResourcesRefueled] Failed to register elements — mod may not function correctly", e);
+		}
+	}
+
+	@Override
+	public void onResourceLoad(ResourceLoader loader) {
+		ResourceManager.loadResources();
 	}
 
 	private void registerCommands() {

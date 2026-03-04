@@ -7,7 +7,7 @@
   "client_mod": true,
   "server_mod": true,
   "main_class": "videogoose.resourcesrefueled.ResourcesRefueled",
-  "smd_resource_id": 8653,
+  "smd_resource_id": 9999,
   "dependencies": [
     -1,
     8292

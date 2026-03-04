@@ -1,52 +1,26 @@
 package videogoose.resourcesrefueled.manager;
 
-import api.mod.ModSkeleton;
-import api.mod.StarLoader;
 import api.mod.config.FileConfiguration;
 import videogoose.resourcesrefueled.ResourcesRefueled;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public final class ConfigManager {
 
 	private static FileConfiguration mainConfig;
 	private static final String[] defaultMainConfig = {
 			"debug_mode: false # If true, enables debug logging and features.",
+			"fuel_cost_per_strength_unit: 0.5 # Heliogen canisters consumed per unit of extractor strength per tick.",
+			"unfueled_extraction_efficiency: 0.3 # Fraction of normal extraction rate when running without Heliogen fuel (0.0-1.0).",
+			"ftl_fuel_per_sector: 1.0 # Heliogen canisters consumed per sector of FTL jump distance.",
+			"ftl_unfueled_cooldown_multiplier: 3.0 # Multiplier applied to FTL cooldown when jumping without fuel.",
+			"star_damage_threshold: 0.85 # Star proximity (0-1) above which hull damage applies. 1.0 = star centre.",
+			"star_damage_scale: 10.0 # Hull damage per second at maximum proximity (threshold + 1.0).",
+			"tank_explosion_yield_per_unit: 5.0 # Explosion damage yield per unit of Heliogen stored in a destroyed tank.",
+			"fuel_per_canister: 100.0 # Amount of fuel units provided by one filled Heliogen canister.",
 	};
 
 	public static void initialize(ResourcesRefueled instance) {
 		mainConfig = instance.getConfig("config");
 		saveDefaultConfig(defaultMainConfig);
-		populateServerMods();
-	}
-
-	/**
-	 * Adds any server-installed mod IDs that are not already in the approved_client_mods config
-	 * list, then saves the config. This ensures mods running on the server are always permitted
-	 * for connecting clients without requiring manual config edits.
-	 */
-	public static void populateServerMods() {
-		try {
-			List<String> approved = mainConfig.getList("approved_client_mods");
-			// Work on a mutable copy; getList may return an unmodifiable view
-			List<String> updated = (approved != null) ? new ArrayList<>(approved) : new ArrayList<>();
-			boolean changed = false;
-			for(ModSkeleton mod : StarLoader.starMods) {
-				String id = String.valueOf(mod.getSmdResourceId());
-				if(!updated.contains(id)) {
-					updated.add(id);
-					ResourcesRefueled.getInstance().logInfo("Auto-approved server mod ID " + id + " (" + mod.getName() + ") in approved_client_mods.");
-					changed = true;
-				}
-			}
-			if(changed) {
-				mainConfig.set("approved_client_mods", updated);
-				mainConfig.saveConfig();
-			}
-		} catch(Exception e) {
-			ResourcesRefueled.getInstance().logException("Failed to populate server mods into approved_client_mods", e);
-		}
 	}
 
 	private static void saveDefaultConfig(String[] config) {
@@ -64,6 +38,70 @@ public final class ConfigManager {
 
 	public static FileConfiguration getMainConfig() {
 		return mainConfig;
+	}
+
+	public static double getFuelCostPerStrengthUnit() {
+		try {
+			return Double.parseDouble(mainConfig.getString("fuel_cost_per_strength_unit"));
+		} catch(Exception e) {
+			return 0.5;
+		}
+	}
+
+	public static double getUnfueledExtractionEfficiency() {
+		try {
+			return Double.parseDouble(mainConfig.getString("unfueled_extraction_efficiency"));
+		} catch(Exception e) {
+			return 0.3;
+		}
+	}
+
+	public static double getFtlFuelPerSector() {
+		try {
+			return Double.parseDouble(mainConfig.getString("ftl_fuel_per_sector"));
+		} catch(Exception e) {
+			return 1.0;
+		}
+	}
+
+	public static double getFtlUnfueledCooldownMultiplier() {
+		try {
+			return Double.parseDouble(mainConfig.getString("ftl_unfueled_cooldown_multiplier"));
+		} catch(Exception e) {
+			return 3.0;
+		}
+	}
+
+	public static float getStarDamageThreshold() {
+		try {
+			return Float.parseFloat(mainConfig.getString("star_damage_threshold"));
+		} catch(Exception e) {
+			return 0.85f;
+		}
+	}
+
+	public static float getStarDamageScale() {
+		try {
+			return Float.parseFloat(mainConfig.getString("star_damage_scale"));
+		} catch(Exception e) {
+			return 10.0f;
+		}
+	}
+
+	public static float getTankExplosionYieldPerUnit() {
+		try {
+			return Float.parseFloat(mainConfig.getString("tank_explosion_yield_per_unit"));
+		} catch(Exception e) {
+			return 5.0f;
+		}
+	}
+
+	public static double getFuelPerCanister() {
+		try {
+			return Double.parseDouble(mainConfig.getString("fuel_per_canister"));
+		} catch(Exception e) {
+			return 100.0;
+		}
 	}
 }
 

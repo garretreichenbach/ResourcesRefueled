@@ -1,4 +1,4 @@
-package videogoose.spaceguard.utils;
+package videogoose.resourcesrefueled.utils;
 
 import java.lang.reflect.*;
 import java.util.Arrays;
