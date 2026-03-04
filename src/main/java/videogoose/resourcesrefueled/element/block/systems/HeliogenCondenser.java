@@ -40,9 +40,6 @@ public class HeliogenCondenser extends Block {
 
 	@Override
 	public void postInitData() {
-		// Recipe: 1 Anbaric Vapor + 1 Parsyne Plasma -> 1 Heliogen Plasma (raw output).
-		// The SolarCondenserTickListener multiplies the actual yield by star proximity at runtime.
-		// RRS element IDs are safely resolved here because postInitData() runs after all elements register.
 		try {
 			short anbaricId = RRSElementInfoManager.elementEntries.get("Anbaric Vapor").id;
 			short parsyneId = RRSElementInfoManager.elementEntries.get("Parsyne Plasma").id;
