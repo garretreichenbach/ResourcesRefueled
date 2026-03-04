@@ -11,8 +11,7 @@ public class FluidPump extends Block {
 	@Override
 	public void initData() {
 		super.initData();
-		blockInfo.description = "An active pump that moves fluids through a connected pipe network.\n" +
-				"Requires power to operate. Can be toggled on or off via a logic signal.";
+		blockInfo.description = "An active pump that moves fluids through a connected pipe network.\nRequires power to operate. Can be toggled on or off via a logic signal.";
 		blockInfo.placable = true;
 		blockInfo.canActivate = true;
 		blockInfo.shoppable = true;

@@ -35,10 +35,10 @@ public final class ResourcesRefueled extends StarMod {
 
 	@Override
 	public void onBlockConfigLoad(BlockConfig config) {
-		logInfo("Registering Heliogen elements...");
+		logInfo("Registering elements...");
 		try {
 			ElementRegistry.registerElements();
-			logInfo("Heliogen elements registered successfully.");
+			logInfo("Elements registered successfully");
 		} catch(Exception e) {
 			logException("[ResourcesRefueled] Failed to register elements — mod may not function correctly", e);
 		}

@@ -63,6 +63,10 @@ public enum ElementRegistry {
 		}
 	}
 
+	public static boolean isFluidTank(short type) {
+		return type == HELIOGEN_TANK.getId();
+	}
+
 	public ElementInformation getInfo() {
 		return elementInterface.getInfo();
 	}

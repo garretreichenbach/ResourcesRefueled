@@ -41,12 +41,7 @@ import static org.ithirahad.resourcesresourced.listeners.BlockRemovalLogic.isExt
 public class MixinExtractorTickListener {
 
 	@Inject(method = "onPreManufacture", at = @At("HEAD"), remap = false)
-	private void heliogenFuelCheck(
-			FactoryCollectionManager factoryCollectionManager,
-			Inventory inventory,
-			LongOpenHashSet[] longOpenHashSets,
-			CallbackInfoReturnable<Boolean> cir
-	) {
+	private void heliogenFuelCheck(FactoryCollectionManager factoryCollectionManager, Inventory inventory, LongOpenHashSet[] longOpenHashSets, CallbackInfoReturnable<Boolean> cir) {
 		if(GameServerState.instance == null) return;
 
 		SegmentPiece block = inventory.getBlockIfPossible();
@@ -56,7 +51,7 @@ public class MixinExtractorTickListener {
 		String uid = entity.getUniqueIdentifier();
 
 		short filledId = ElementRegistry.HELIOGEN_CANISTER_FILLED.getId();
-		short emptyId  = ElementRegistry.HELIOGEN_CANISTER_EMPTY.getId();
+		short emptyId = ElementRegistry.HELIOGEN_CANISTER_EMPTY.getId();
 
 		int filledCount = inventory.getOverallQuantity(filledId);
 

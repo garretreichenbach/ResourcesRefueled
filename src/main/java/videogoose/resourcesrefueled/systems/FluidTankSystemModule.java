@@ -1,12 +1,16 @@
 package videogoose.resourcesrefueled.systems;
 
 import api.utils.game.module.util.SystemModule;
+import it.unimi.dsi.fastutil.longs.LongArrayList;
+import org.schema.common.util.linAlg.Vector3i;
 import org.schema.game.common.controller.SegmentController;
 import org.schema.game.common.controller.elements.ManagerContainer;
+import org.schema.game.common.data.element.ElementCollection;
+import org.schema.game.common.data.element.ElementKeyMap;
 import org.schema.schine.graphicsengine.core.Timer;
+import org.schema.schine.graphicsengine.forms.BoundingBox;
 import org.schema.schine.network.SerialializationInterface;
 import videogoose.resourcesrefueled.ResourcesRefueled;
-import videogoose.resourcesrefueled.element.ElementRegistry;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -14,8 +18,8 @@ import java.io.IOException;
 
 public class FluidTankSystemModule extends SystemModule<FluidTankSystemModule.TankSystemData> {
 
-	public FluidTankSystemModule(SegmentController entity, ManagerContainer<?> managerContainer) {
-		super(entity, managerContainer, ResourcesRefueled.getInstance(), ElementRegistry.HELIOGEN_TANK.getId(), new TankSystemData());
+	public FluidTankSystemModule(SegmentController entity, ManagerContainer<?> managerContainer, short tankId, short fluidId) {
+		super(entity, managerContainer, ResourcesRefueled.getInstance(), tankId, new TankSystemData(fluidId, 1000, 0));
 	}
 
 	/**
@@ -39,7 +43,7 @@ public class FluidTankSystemModule extends SystemModule<FluidTankSystemModule.Ta
 
 	@Override
 	public String getName() {
-		return "Fluid Tank System Module";
+		return "Fluid Tank System Module - " + ElementKeyMap.getInfo(getFluidTypeId()).getName();
 	}
 
 	public short getFluidTypeId() {
@@ -69,11 +73,44 @@ public class FluidTankSystemModule extends SystemModule<FluidTankSystemModule.Ta
 		flagUpdatedData();
 	}
 
+	public LongArrayList getBlockIndices() {
+		LongArrayList indices = new LongArrayList();
+		for(long index : blocks.keySet()) {
+			indices.add(index);
+		}
+		return indices;
+	}
+
+	public BoundingBox getBoundingBox() {
+		BoundingBox boundingBox = new BoundingBox();
+		Vector3i min = new Vector3i(0, 0, 0);
+		Vector3i max = new Vector3i(0, 0, 0);
+		Vector3i pos = new Vector3i();
+		for(long index : blocks.keySet()) {
+			ElementCollection.getPosFromIndex(index, pos);
+			min.set(Math.min(min.x, pos.x), Math.min(min.y, pos.y), Math.min(min.z, pos.z));
+			max.set(Math.max(max.x, pos.x), Math.max(max.y, pos.y), Math.max(max.z, pos.z));
+		}
+		return boundingBox;
+	}
+
 	protected static class TankSystemData implements SerialializationInterface {
 
 		private short fluidTypeId;
 		private double tankCapacity;
 		private double currentFluidLevel;
+
+		public TankSystemData() {
+			fluidTypeId = 0;
+			tankCapacity = 0;
+			currentFluidLevel = 0;
+		}
+
+		public TankSystemData(short fluidTypeId, double tankCapacity, double currentFluidLevel) {
+			this.fluidTypeId = fluidTypeId;
+			this.tankCapacity = tankCapacity;
+			this.currentFluidLevel = currentFluidLevel;
+		}
 
 		@Override
 		public void serialize(DataOutput dataOutput, boolean b) throws IOException {

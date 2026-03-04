@@ -11,8 +11,7 @@ public class FluidFilter extends Block {
 	@Override
 	public void initData() {
 		super.initData();
-		blockInfo.description = "A filter that restricts which fluid types may pass through a section of pipe network.\n" +
-				"Configure via the block's interface to whitelist or blacklist specific fluids.";
+		blockInfo.description = "A filter that restricts which fluid types may pass through a section of pipe network.\nConfigure via the block's interface to whitelist or blacklist specific fluids.";
 		blockInfo.placable = true;
 		blockInfo.canActivate = true;
 		blockInfo.shoppable = true;

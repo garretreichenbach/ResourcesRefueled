@@ -11,8 +11,7 @@ public class FluidPipe extends Block {
 	@Override
 	public void initData() {
 		super.initData();
-		blockInfo.description = "A conduit for transporting fluids between tanks, pumps, valves, and filters.\n" +
-				"Connect blocks of the same fluid network together to form a pipe system.";
+		blockInfo.description = "A conduit for transporting fluids between tanks, pumps, valves, and filters.\nConnect blocks of the same fluid network together to form a pipe system.";
 		blockInfo.placable = true;
 		blockInfo.canActivate = false;
 		blockInfo.shoppable = true;
@@ -20,7 +19,8 @@ public class FluidPipe extends Block {
 	}
 
 	@Override
-	public void postInitData() {}
+	public void postInitData() {
+	}
 
 	@Override
 	public void initResources() {

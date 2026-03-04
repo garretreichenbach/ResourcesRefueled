@@ -20,8 +20,7 @@ public class HarvesterFuelEfficiencyListener extends Listener<HarvesterStrengthU
 	@Override
 	public void onEvent(HarvesterStrengthUpdateEvent event) {
 		String uid = event.getExtractingEntity().getUniqueIdentifier();
-		Boolean unfueled = FuelTickState.unfueledThisTick.get(uid);
-		if(unfueled) {
+		if(FuelTickState.unfueledThisTick.get(uid)) {
 			float efficiency = (float) ConfigManager.getUnfueledExtractionEfficiency();
 			event.setPower(event.getPower() * efficiency);
 		}
