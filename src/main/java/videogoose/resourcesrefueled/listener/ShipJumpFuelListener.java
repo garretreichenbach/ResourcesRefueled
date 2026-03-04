@@ -49,7 +49,7 @@ public class ShipJumpFuelListener extends Listener<ShipJumpEngageEvent> {
 		}
 
 		// Tanks present — check if they hold Heliogen and have enough fuel.
-		boolean tankHoldsHeliogen = tankModule.getFluidTypeId() == ElementRegistry.HELIOGEN_CANISTER_FILLED.getId();
+		boolean tankHoldsHeliogen = tankModule.getFluidId() == ElementRegistry.HELIOGEN_CANISTER_FILLED.getId();
 		double fuelPerCanister = ConfigManager.getFuelPerCanister();
 		double fuelRequired = canistersNeeded * fuelPerCanister;
 		double fuelAvailable = tankHoldsHeliogen ? tankModule.getCurrentFluidLevel() : 0;

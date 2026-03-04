@@ -59,7 +59,7 @@ public class MixinExtractorTickListener {
 
 		// Source 1: FluidTankSystemModule (may be null if system unloaded)
 		FluidTankSystemModule tankModule = (FluidTankSystemModule) entity.getManagerContainer().getModMCModule(ElementRegistry.HELIOGEN_TANK.getId());
-		if(tankModule != null && tankModule.getFluidTypeId() == ElementRegistry.HELIOGEN_CANISTER_FILLED.getId()) {
+		if(tankModule != null && tankModule.getFluidId() == ElementRegistry.HELIOGEN_CANISTER_FILLED.getId()) {
 			totalFuel += tankModule.getCurrentFluidLevel();
 		}
 
@@ -98,7 +98,7 @@ public class MixinExtractorTickListener {
 		// Drain tanks first, then canisters for any remainder
 		double remaining = fuelSpent;
 		FluidTankSystemModule tankModule = (FluidTankSystemModule) entity.getManagerContainer().getModMCModule(ElementRegistry.HELIOGEN_TANK.getId());
-		if(tankModule != null && tankModule.getFluidTypeId() == ElementRegistry.HELIOGEN_CANISTER_FILLED.getId()) {
+		if(tankModule != null && tankModule.getFluidId() == ElementRegistry.HELIOGEN_CANISTER_FILLED.getId()) {
 			double fromTank = Math.min(tankModule.getCurrentFluidLevel(), remaining);
 			if(fromTank > 0) {
 				tankModule.setCurrentFluidLevel(tankModule.getCurrentFluidLevel() - fromTank);

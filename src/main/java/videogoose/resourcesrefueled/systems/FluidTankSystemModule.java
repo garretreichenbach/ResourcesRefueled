@@ -1,5 +1,7 @@
 package videogoose.resourcesrefueled.systems;
 
+import api.network.PacketReadBuffer;
+import api.network.PacketWriteBuffer;
 import api.utils.game.module.util.SystemModule;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import org.schema.common.util.linAlg.Vector3i;
@@ -9,17 +11,19 @@ import org.schema.game.common.data.element.ElementCollection;
 import org.schema.game.common.data.element.ElementKeyMap;
 import org.schema.schine.graphicsengine.core.Timer;
 import org.schema.schine.graphicsengine.forms.BoundingBox;
-import org.schema.schine.network.SerialializationInterface;
 import videogoose.resourcesrefueled.ResourcesRefueled;
 
-import java.io.DataInput;
-import java.io.DataOutput;
 import java.io.IOException;
 
-public class FluidTankSystemModule extends SystemModule<FluidTankSystemModule.TankSystemData> {
+public class FluidTankSystemModule extends SystemModule {
+
+	private short fluidId;
+	private double tankCapacity;
+	private double currentFluidLevel;
 
 	public FluidTankSystemModule(SegmentController entity, ManagerContainer<?> managerContainer, short tankId, short fluidId) {
-		super(entity, managerContainer, ResourcesRefueled.getInstance(), tankId, new TankSystemData(fluidId, 1000, 0));
+		super(entity, managerContainer, ResourcesRefueled.getInstance(), tankId);
+		this.fluidId = fluidId;
 	}
 
 	/**
@@ -29,6 +33,20 @@ public class FluidTankSystemModule extends SystemModule<FluidTankSystemModule.Ta
 	@Override
 	public void handle(Timer timer) {
 
+	}
+
+	@Override
+	public void onTagSerialize(PacketWriteBuffer buffer) throws IOException {
+		buffer.writeShort(fluidId);
+		buffer.writeDouble(tankCapacity);
+		buffer.writeDouble(currentFluidLevel);
+	}
+
+	@Override
+	public void onTagDeserialize(PacketReadBuffer buffer) throws IOException {
+		fluidId = buffer.readShort();
+		tankCapacity = buffer.readDouble();
+		currentFluidLevel = buffer.readDouble();
 	}
 
 	@Override
@@ -43,33 +61,33 @@ public class FluidTankSystemModule extends SystemModule<FluidTankSystemModule.Ta
 
 	@Override
 	public String getName() {
-		return "Fluid Tank System Module - " + ElementKeyMap.getInfo(getFluidTypeId()).getName();
+		return "Fluid Tank System Module - " + ElementKeyMap.getInfo(fluidId).getName();
 	}
 
-	public short getFluidTypeId() {
-		return getData().fluidTypeId;
+	public short getFluidId() {
+		return fluidId;
 	}
 
-	public void setFluidTypeId(short fluidTypeId) {
-		getData().fluidTypeId = fluidTypeId;
+	public void setFluidId(short fluidId) {
+		this.fluidId = fluidId;
 		flagUpdatedData();
 	}
 
 	public double getTankCapacity() {
-		return getData().tankCapacity;
+		return tankCapacity;
 	}
 
 	public void setTankCapacity(double tankCapacity) {
-		getData().tankCapacity = tankCapacity;
+		this.tankCapacity = tankCapacity;
 		flagUpdatedData();
 	}
 
 	public double getCurrentFluidLevel() {
-		return getData().currentFluidLevel;
+		return currentFluidLevel;
 	}
 
 	public void setCurrentFluidLevel(double currentFluidLevel) {
-		getData().currentFluidLevel = currentFluidLevel;
+		this.currentFluidLevel = currentFluidLevel;
 		flagUpdatedData();
 	}
 
@@ -92,38 +110,5 @@ public class FluidTankSystemModule extends SystemModule<FluidTankSystemModule.Ta
 			max.set(Math.max(max.x, pos.x), Math.max(max.y, pos.y), Math.max(max.z, pos.z));
 		}
 		return boundingBox;
-	}
-
-	protected static class TankSystemData implements SerialializationInterface {
-
-		private short fluidTypeId;
-		private double tankCapacity;
-		private double currentFluidLevel;
-
-		public TankSystemData() {
-			fluidTypeId = 0;
-			tankCapacity = 0;
-			currentFluidLevel = 0;
-		}
-
-		public TankSystemData(short fluidTypeId, double tankCapacity, double currentFluidLevel) {
-			this.fluidTypeId = fluidTypeId;
-			this.tankCapacity = tankCapacity;
-			this.currentFluidLevel = currentFluidLevel;
-		}
-
-		@Override
-		public void serialize(DataOutput dataOutput, boolean b) throws IOException {
-			dataOutput.writeShort(fluidTypeId);
-			dataOutput.writeDouble(tankCapacity);
-			dataOutput.writeDouble(currentFluidLevel);
-		}
-
-		@Override
-		public void deserialize(DataInput dataInput, int i, boolean b) throws IOException {
-			fluidTypeId = dataInput.readShort();
-			tankCapacity = dataInput.readDouble();
-			currentFluidLevel = dataInput.readDouble();
-		}
 	}
 }

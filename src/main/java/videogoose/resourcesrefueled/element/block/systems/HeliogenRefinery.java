@@ -51,13 +51,8 @@ public class HeliogenRefinery extends Block {
 			short emptyId = ElementRegistry.HELIOGEN_CANISTER_EMPTY.getId();
 
 			FixedRecipeProduct product = new FixedRecipeProduct();
-			product.input = new FactoryResource[] {
-					new FactoryResource(plasmaId, (short) PLASMA_PER_CANISTER),
-					new FactoryResource(emptyId, (short) 1)
-			};
-			product.output = new FactoryResource[] {
-					new FactoryResource(filledId, (short) PLASMA_PER_CANISTER)
-			};
+			product.input = new FactoryResource[]{new FactoryResource(PLASMA_PER_CANISTER, plasmaId), new FactoryResource(1, emptyId)};
+			product.output = new FactoryResource[]{new FactoryResource(PLASMA_PER_CANISTER, filledId)};
 			condensingRecipe.recipeProducts = new FixedRecipeProduct[]{product};
 		} catch(Exception e) {
 			ResourcesRefueled.getInstance().logException("[ResourcesRefueled] Failed to register Heliogen Refinery recipe", e);
