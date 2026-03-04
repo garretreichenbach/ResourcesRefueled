@@ -1,9 +1,8 @@
 package videogoose.resourcesrefueled.element.block.systems;
 
 import api.config.BlockConfig;
+import api.utils.element.Blocks;
 import org.ithirahad.resourcesresourced.RRSElementInfoManager;
-import org.schema.game.common.data.element.ElementInformation;
-import org.schema.game.common.data.element.ElementKeyMap;
 import org.schema.game.common.data.element.FactoryResource;
 import videogoose.resourcesrefueled.ResourcesRefueled;
 import videogoose.resourcesrefueled.element.ElementRegistry;
@@ -24,17 +23,16 @@ public class HeliogenCondenser extends Block {
 
 	@Override
 	public void initData() {
-		ElementInformation vanillaFactory = ElementKeyMap.getInfo(ElementKeyMap.FACTORY_BASIC_ID);
 		// Reuse vanilla factory textures as a placeholder until custom art is added.
-		blockInfo = BlockConfig.registerFactory(ResourcesRefueled.getInstance(), name, vanillaFactory.getTextureIds());
+		blockInfo = BlockConfig.registerFactory(ResourcesRefueled.getInstance(), name, new short[6]);
+		blockInfo.type = Blocks.BASIC_FACTORY.getInfo().type;
 		blockInfo.description = "A station-mounted condenser that uses stellar radiation to catalyze a reaction between Anbaric Vapor and Parsyne Plasma, producing raw Heliogen Plasma.\nYield increases the closer the station is to its local star.\nConnect Factory Enhancers to boost throughput.";
-		blockInfo.price = vanillaFactory.price;
-		blockInfo.mass = vanillaFactory.mass;
-		blockInfo.volume = vanillaFactory.volume;
-		blockInfo.maxHitPointsFull = vanillaFactory.maxHitPointsFull;
+		blockInfo.price = Blocks.BASIC_FACTORY.getInfo().price;
+		blockInfo.mass = Blocks.BASIC_FACTORY.getInfo().mass;
+		blockInfo.volume = Blocks.BASIC_FACTORY.getInfo().volume;
+		blockInfo.maxHitPointsFull = Blocks.BASIC_FACTORY.getInfo().maxHitPointsFull;
 		blockInfo.shoppable = true;
 		blockInfo.canActivate = true;
-		blockInfo.type = vanillaFactory.type;
 		BlockConfig.setRestrictedBlock(blockInfo, true);
 	}
 

@@ -30,14 +30,11 @@ public enum ElementRegistry {
 	FLUID_VALVE(new FluidValve()),
 	FLUID_FILTER(new FluidFilter()),
 	FLUID_PUMP(new FluidPump()),
-
 	FLUID_TANK(new FluidTank()),
 
 	//Heliogen production blocks
 	HELIOGEN_CONDENSER(new HeliogenCondenser()),
 	HELIOGEN_REFINERY(new HeliogenRefinery());
-
-	public static ElementCategory pipesCategory;
 
 	public final ElementInterface elementInterface;
 
@@ -46,8 +43,6 @@ public enum ElementRegistry {
 	}
 
 	public static void registerElements() {
-		pipesCategory = BlockConfig.newElementCategory(Blocks.FACTORY_MANAGER.getInfo().type, "Pipes");
-
 		for(ElementRegistry registry : values()) {
 			registry.elementInterface.initData();
 		}

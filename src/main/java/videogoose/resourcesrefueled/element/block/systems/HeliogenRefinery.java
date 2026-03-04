@@ -1,6 +1,7 @@
 package videogoose.resourcesrefueled.element.block.systems;
 
 import api.config.BlockConfig;
+import api.utils.element.Blocks;
 import api.utils.element.CustomModRefinery;
 import org.schema.game.common.data.element.*;
 import videogoose.resourcesrefueled.ResourcesRefueled;
@@ -31,16 +32,15 @@ public class HeliogenRefinery extends Block {
 
 	@Override
 	public void initData() {
-		ElementInformation vanillaFactory = ElementKeyMap.getInfo(ElementKeyMap.FACTORY_BASIC_ID);
-		blockInfo = BlockConfig.registerRefinery(ResourcesRefueled.getInstance(), name, vanillaFactory.getTextureIds(), new CustomModRefinery(condensingRecipe, "Heliogen Refinery", "Condensing Heliogen Plasma...", BAKE_TIME));
+		blockInfo = BlockConfig.registerRefinery(ResourcesRefueled.getInstance(), name, new short[6], new CustomModRefinery(condensingRecipe, "Heliogen Refinery", "Condensing Heliogen Plasma...", BAKE_TIME));
+		blockInfo.type = Blocks.BASIC_FACTORY.getInfo().type;
 		blockInfo.description = "A refinery that compresses raw Heliogen Plasma into portable Heliogen Canisters. " + "Produces " + PLASMA_PER_CANISTER + " filled canisters per unit of plasma input. " + "Also accepts empty canisters as an additional input to fill them directly.";
-		blockInfo.price = vanillaFactory.price;
-		blockInfo.mass = vanillaFactory.mass;
-		blockInfo.volume = vanillaFactory.volume;
-		blockInfo.maxHitPointsFull = vanillaFactory.maxHitPointsFull;
+		blockInfo.price = Blocks.BASIC_FACTORY.getInfo().price;
+		blockInfo.mass = Blocks.BASIC_FACTORY.getInfo().mass;
+		blockInfo.volume = Blocks.BASIC_FACTORY.getInfo().volume;
+		blockInfo.maxHitPointsFull = Blocks.BASIC_FACTORY.getInfo().maxHitPointsFull;
 		blockInfo.shoppable = true;
 		blockInfo.canActivate = true;
-		blockInfo.type = vanillaFactory.type;
 	}
 
 	@Override

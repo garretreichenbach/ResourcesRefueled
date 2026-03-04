@@ -1,8 +1,7 @@
 package videogoose.resourcesrefueled.element.block.systems;
 
 import api.config.BlockConfig;
-import org.schema.game.common.data.element.ElementInformation;
-import org.schema.game.common.data.element.ElementKeyMap;
+import api.utils.element.Blocks;
 import videogoose.resourcesrefueled.ResourcesRefueled;
 import videogoose.resourcesrefueled.element.block.Block;
 
@@ -21,17 +20,16 @@ public class FluidTank extends Block {
 
 	@Override
 	public void initData() {
-		ElementInformation vanillaFactory = ElementKeyMap.getInfo(ElementKeyMap.FACTORY_BASIC_ID);
 		blockInfo = BlockConfig.newElement(ResourcesRefueled.getInstance(), name, new short[] {0, 0, 0, 0, 0, 0});
+		blockInfo.type = Blocks.BASIC_FACTORY.getInfo().type;
 		blockInfo.description = "A pressurized storage tank for holding fluids.\nConnect to pipes and pumps to fill or drain.";
-		blockInfo.price = (int) (vanillaFactory.price * 2);
-		blockInfo.mass = vanillaFactory.mass * 1.5f;
-		blockInfo.volume = vanillaFactory.volume * 0.5f;   // compact pressure vessel
-		blockInfo.maxHitPointsFull = vanillaFactory.maxHitPointsFull * 2; // reinforced, but volatile
+		blockInfo.price = (int) (Blocks.BASIC_FACTORY.getInfo().price * 2);
+		blockInfo.mass = Blocks.BASIC_FACTORY.getInfo().mass * 1.5f;
+		blockInfo.volume = Blocks.BASIC_FACTORY.getInfo().volume * 0.5f;   // compact pressure vessel
+		blockInfo.maxHitPointsFull = Blocks.BASIC_FACTORY.getInfo().maxHitPointsFull * 2; // reinforced, but volatile
 		blockInfo.shoppable = true;
 		blockInfo.canActivate = false; // activated through the manager module
 		blockInfo.systemBlock = true;
-		blockInfo.type = vanillaFactory.type;
 	}
 
 
