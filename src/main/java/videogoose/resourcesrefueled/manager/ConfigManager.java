@@ -38,6 +38,14 @@ public final class ConfigManager {
 		mainConfig.saveConfig();
 	}
 
+	public static boolean isDebugMode() {
+		try {
+			return Boolean.parseBoolean(mainConfig.getString("debug_mode"));
+		} catch(Exception e) {
+			return false;
+		}
+	}
+
 	public static double getFuelCostPerStrengthUnit() {
 		try {
 			return Double.parseDouble(mainConfig.getString("fuel_cost_per_strength_unit"));

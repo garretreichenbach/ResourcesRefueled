@@ -85,7 +85,7 @@ Star-proximity-boosted Anbaric + Parsyne → Heliogen Plasma conversion.
 
 ---
 
-### 8. ⬜ Fluid pipe-network refactor (`FluidTankSystemModule`)
+### 8. 🟡 Fluid pipe-network refactor (`FluidTankSystemModule`)
 
 **Goal:** Replace the inherited `blocks` array in `FluidTankSystemModule` with two explicit custom maps — one for tank
 multiblock segments and one for pipe-chain segments — so that the module owns the full network topology, capacity is
@@ -96,68 +96,46 @@ inherited `blocks` map is neither read nor written by this module after the refa
 
 #### 8.1 — Segment value types
 
-- ⬜ Define `FluidTankSegment` (inner class or package-private class in `systems/`) — holds `long blockIndex` and
-  `short blockType`; represents one placed `FLUID_TANK` block that contributes capacity to the network.
-- ⬜ Define `FluidPipeSegment` (inner class or package-private class in `systems/`) — holds `long blockIndex` and
-  `short blockType`; represents one placed pipe-network block (`FLUID_PIPE`, `FLUID_PUMP`, `FLUID_VALVE`,
-  `FLUID_FILTER`).
+- ✅ `FluidTankSegment` — `long blockIndex` + `short blockType`; one per placed `FLUID_TANK` block.
+- ✅ `FluidPipeSegment` — `long blockIndex` + `short blockType`; one per placed pipe-network block.
 
 #### 8.2 — Module map fields
 
-- ⬜ Add `HashMap<Long, FluidTankSegment> tankSegments` to `FluidTankSystemModule`, keyed by block index. One entry per
-  placed tank block on the entity.
-- ⬜ Add `HashMap<Long, FluidPipeSegment> pipeSegments` to `FluidTankSystemModule`, keyed by block index. One entry per
-  placed pipe-network block.
-- ⬜ Stop populating or reading the inherited `blocks` map for any fluid-network block type; replace all existing
-  `blocks.keySet()` calls with reads from `tankSegments` or `pipeSegments`.
+- ✅ `HashMap<Long, FluidTankSegment> tankSegments` — all tank blocks on this entity.
+- ✅ `HashMap<Long, FluidPipeSegment> pipeSegments` — all pipe-network blocks on this entity.
+- ✅ `List<FluidNetwork> networks` — connected components; each owns its own `fluidLevel` and derived `tankCapacity`.
+- ✅ Inherited `blocks` map bypassed entirely for fluid-network blocks.
 
-#### 8.3 — Structural capacity
+#### 8.3 — Structural capacity per network
 
-- ⬜ Add `float capacityPerTankBlock` field, initialised from `ConfigManager.getFluidTankCapacityPerBlock()`.
-- ⬜ Add `recalculateCapacity()` — sets `tankCapacity = tankSegments.size() * capacityPerTankBlock`; clamps
-  `currentFluidLevel` to the new capacity so level never exceeds capacity after tank blocks are removed; calls
-  `flagUpdatedData()`.
-- ⬜ Remove `setTankCapacity(double)` — capacity is now structural and read-only from the outside. Keep the
-  `getTankCapacity()` getter unchanged.
+- ✅ `FluidNetwork.tankCapacity` derived from `tankCount × ConfigManager.getFluidTankCapacityPerBlock()`.
+- ✅ `recalculateNetworkCapacity(FluidNetwork)` recomputes capacity and clamps `fluidLevel`.
+- ✅ No public `setTankCapacity` — capacity is read-only from outside.
 
-#### 8.4 — Placement and removal hooks
+#### 8.4 — Placement and removal via `SegmentPieceEventHandler`
 
-- ⬜ Override `onBlockPlaced(long blockIndex, short blockType)` (confirm exact `SystemModule` API method signature):
-  - `FLUID_TANK` id → put new `FluidTankSegment(blockIndex, blockType)` into `tankSegments`; call
-    `recalculateCapacity()`.
-  - Any pipe id (`FLUID_PIPE`, `FLUID_PUMP`, `FLUID_VALVE`, `FLUID_FILTER`) → put new
-    `FluidPipeSegment(blockIndex, blockType)` into `pipeSegments`; call `flagUpdatedData()`.
-  - Do **not** call `super.onBlockPlaced()` for these types to prevent populating the inherited `blocks` map.
-- ⬜ Override `onBlockRemoved(long blockIndex, short blockType)`:
-  - If `tankSegments.containsKey(blockIndex)` → remove entry; call `recalculateCapacity()`.
-  - If `pipeSegments.containsKey(blockIndex)` → remove entry; call `flagUpdatedData()`.
-  - Do **not** call `super.onBlockRemoved()` for these types.
+- ✅ `onPlace(index, blockType)` — public method called by `SegmentPieceEventHandler.onAdd`; adds block to appropriate map, BFS-merges all face-adjacent networks into one, recalculates capacity.
+- ✅ `onRemove(index, blockType)` — public method called by `SegmentPieceEventHandler.onBlockRemove`; removes block from its network, BFS-re-partitions remaining members into new components, distributes fluid proportionally by new capacity.
+- ✅ `handlePlace(long, byte)` / `handleRemove(long)` — parent `SystemModule` overrides, intentionally empty. Prevents the parent from populating the inherited `blocks` map. The `byte` type in `handlePlace` cannot represent a full `short` block ID without truncation, which is why the event handler delivers the full type via `onPlace`/`onRemove` instead.
+- ✅ `SegmentPieceEventHandler.onAdd` / `onBlockRemove` / `onBlockKilled` all delegate to the module with explicit `short` block type.
 
 #### 8.5 — Serialisation
 
-- ⬜ Extend `onTagSerialize` to write both maps: write count as `int`, then per-entry `writeLong(blockIndex)` +
-  `writeShort(blockType)` for `tankSegments`, then repeat for `pipeSegments`.
-- ⬜ Extend `onTagDeserialize` to read both maps back and repopulate `tankSegments` and `pipeSegments`; call
-  `recalculateCapacity()` at the end of deserialisation.
-- ⬜ Remove the old `tankCapacity` read/write from serialisation — capacity is now always derived from
-  `tankSegments.size()`.
-- ⬜ Keep `fluidId` and `currentFluidLevel` serialisation unchanged.
+- ✅ `onTagSerialize` — writes `fluidId`, network count, then per-network `fluidLevel` + member list (index + type per block).
+- ✅ `onTagDeserialize` — rebuilds `tankSegments`, `pipeSegments`, and `networks`; calls `recalculateNetworkCapacity` after deserialisation.
+- ✅ `tankCapacity` not written — always derived structurally on load.
 
 #### 8.6 — Update callers
 
-- ⬜ `FluidTankSystemModule.getBlockIndices()` — rewrite to return a `LongArrayList` built from `tankSegments.keySet()` (
-  tank blocks only; this is what explosion scatter uses).
-- ⬜ `FluidTankSystemModule.getBoundingBox()` — rewrite bounding-box computation to iterate over `tankSegments.keySet()`
-  via `ElementCollection.getPosFromIndex`.
-- ⬜ `SegmentPieceKillEvent.createExplosionList` — no change needed at the call site; `getBlockIndices()` and
-  `getBoundingBox()` already provide the right data after 8.6 above.
-- ⬜ `EntityFuelManager.syncFromLive` — no change needed; it reads `tankModule.getCurrentFluidLevel()` /
-  `getTankCapacity()`, both still valid.
+- ✅ `getBlockIndices()` / `getBoundingBox()` operate on `tankSegments`.
+- ✅ `getBlockIndicesForExplosion(blockIndex)` / `getFluidLevelForBlock` / `getCapacityForBlock` / `getBoundingBoxForBlock` — per-network explosion helpers.
+- ✅ `SegmentPieceEventHandler.createExplosionList` uses per-network helpers so only the destroyed network's fluid drives the explosion.
+- ✅ `EntityFuelManager.syncFromLive` / `writeBackToLive` use `getCurrentFluidLevel()` / `setCurrentFluidLevel()` — no changes needed, they aggregate across networks transparently.
 
 #### 8.7 — Config addition
 
-- ⬜ Add `fluid_tank_capacity_per_block: 500.0` to the `defaultMainConfig` array in `ConfigManager`.
-- ⬜ Add `ConfigManager.getFluidTankCapacityPerBlock()` accessor (parse as `double`, default `500.0`).
+- ✅ `fluid_tank_capacity_per_block: 500.0` added to `ConfigManager` defaults.
+- ✅ `ConfigManager.getFluidTankCapacityPerBlock()` accessor added.
 
 ---
 
@@ -166,10 +144,6 @@ inherited `blocks` map is neither read nor written by this module after the refa
 > Not required for capacity accounting, explosion, or fuel-drain to function. Planned as the next milestone after
 > 8.1–8.7 are complete.
 
-- ⬜ Define connectivity rules — a pipe segment is connected to an adjacent block if they share a face and both block
-  types belong to the same fluid-network set (`tankSegments` ∪ `pipeSegments`).
-- ⬜ Flood-fill on `onBlockPlaced` / `onBlockRemoved` to keep `pipeSegments` in sync with the live connected subgraph (
-  needed if we want to support disconnected sub-networks on the same entity).
 - ⬜ `FluidPump` directional flow — pumps have a configured input face and output face; fluid moves from the input-side
   sub-network to the output-side sub-network at a rate per tick in `handle(Timer)`.
 - ⬜ `FluidValve` open/close state — toggled by player activation; closed valve breaks connectivity at that block in the

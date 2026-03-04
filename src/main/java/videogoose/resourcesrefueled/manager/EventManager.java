@@ -12,20 +12,19 @@ import videogoose.resourcesrefueled.ResourcesRefueled;
 import videogoose.resourcesrefueled.fuel.EntityFuelManager;
 import videogoose.resourcesrefueled.fuel.StellarFuelManager;
 import videogoose.resourcesrefueled.listener.HarvesterEnhancerOverrideListener;
-import videogoose.resourcesrefueled.listener.SegmentPieceKillEvent;
+import videogoose.resourcesrefueled.listener.SegmentPieceEventHandler;
 import videogoose.resourcesrefueled.listener.ShipJumpFuelListener;
 import videogoose.resourcesrefueled.listener.SolarCondenserTickListener;
 import videogoose.resourcesrefueled.systems.FluidTankSystemModule;
 
 public class EventManager {
 
-	public static SegmentPieceKillEvent killEvent;
+	private static final SegmentPieceEventHandler segmentPieceEventHandler = new SegmentPieceEventHandler();
 
 	public static void initialize(ResourcesRefueled instance) {
-		// Block kill listener (tank explosion handled here)
-		FastListenerCommon.segmentPieceKilledListeners.add(killEvent = new SegmentPieceKillEvent());
-
-		// Solar condenser proximity yield bonus + void-system block
+		FastListenerCommon.segmentPieceAddListeners.add(segmentPieceEventHandler);
+		FastListenerCommon.segmentPieceRemoveListeners.add(segmentPieceEventHandler);
+		FastListenerCommon.segmentPieceKilledListeners.add(segmentPieceEventHandler);
 		FastListenerCommon.factoryManufactureListeners.add(new SolarCondenserTickListener());
 
 		// Replace vanilla enhancer bonus on extractors with Heliogen-fuel-based boost

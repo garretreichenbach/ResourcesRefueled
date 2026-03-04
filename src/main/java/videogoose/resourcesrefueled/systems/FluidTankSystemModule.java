@@ -8,7 +8,6 @@ import org.schema.common.util.linAlg.Vector3i;
 import org.schema.game.common.controller.SegmentController;
 import org.schema.game.common.controller.elements.ManagerContainer;
 import org.schema.game.common.data.element.ElementCollection;
-import org.schema.game.common.data.element.ElementKeyMap;
 import org.schema.schine.graphicsengine.core.Timer;
 import org.schema.schine.graphicsengine.forms.BoundingBox;
 import videogoose.resourcesrefueled.ResourcesRefueled;
@@ -16,189 +15,323 @@ import videogoose.resourcesrefueled.element.ElementRegistry;
 import videogoose.resourcesrefueled.manager.ConfigManager;
 
 import java.io.IOException;
-import java.util.HashMap;
+import java.util.*;
 
 /**
- * System module that manages a fluid pipe network on a single entity.
+ * System module that manages one or more fluid networks on a single entity.
  * <p>
- * <b>Network topology</b> is tracked in two explicit maps rather than the inherited
- * {@code blocks} array:
- * <ul>
- *   <li>{@link #tankSegments} — one entry per placed {@code FLUID_TANK} block.
- *       Drives structural capacity: {@code tankCapacity = tankSegments.size() × capacityPerBlock}.</li>
- *   <li>{@link #pipeSegments} — one entry per placed pipe-network block
- *       ({@code FLUID_PIPE}, {@code FLUID_PUMP}, {@code FLUID_VALVE}, {@code FLUID_FILTER}).
- *       Used for future routing / connectivity logic.</li>
- * </ul>
- * The inherited {@code blocks} map is deliberately not populated for fluid-network blocks.
+ * <b>Topology model:</b> the entity's fluid blocks (tank blocks and pipe blocks) are
+ * partitioned into connected components by face-adjacency. Each component is a
+ * {@link FluidNetwork} with its own fluid level and structural capacity.
+ * Tank blocks contribute capacity; pipe blocks carry fluid but contribute no storage.
  * <p>
- * <b>Placement / removal</b> is handled by {@link #handlePlace} and {@link #handleRemove},
- * which update the appropriate map and trigger {@link #recalculateCapacity()} when tank
- * blocks change.
+ * <b>Placement</b> ({@link #onPlace}): the new block is added to the master maps,
+ * all face-adjacent existing networks are merged into a single network containing the
+ * new block, and capacity is recalculated.
  * <p>
- * <b>Serialisation</b> writes both maps to the packet buffer so the network is fully
- * restored on the client and on entity reload.
+ * <b>Removal</b> ({@link #onRemove}): the block is removed from its network and
+ * the master maps. The remaining members of that network are re-flooded to form zero
+ * or more new networks; fluid is distributed proportionally by new capacity.
+ * <p>
+ * <b>Serialisation</b>: each {@link FluidNetwork} writes its member indices, block
+ * types, and fluid level. On deserialisation the maps are rebuilt from the member
+ * lists and capacity is recalculated structurally.
  */
 public class FluidTankSystemModule extends SystemModule {
 
-	// -------------------------------------------------------------------------
-	// Value types
-	// -------------------------------------------------------------------------
+	// =========================================================================
+	// Inner types
+	// =========================================================================
 
-	/** All tank blocks on this entity, keyed by block index. Drives capacity. */
+	/** All tank blocks on this entity, keyed by block index. */
 	private final HashMap<Long, FluidTankSegment> tankSegments = new HashMap<>();
 	/** All pipe-network blocks on this entity, keyed by block index. */
 	private final HashMap<Long, FluidPipeSegment> pipeSegments = new HashMap<>();
+	/**
+	 * The live set of connected fluid networks on this entity.
+	 * Each network is an independent fluid container.
+	 */
+	private final List<FluidNetwork> networks = new ArrayList<>();
 
-	// -------------------------------------------------------------------------
+	// =========================================================================
 	// Fields
-	// -------------------------------------------------------------------------
-	/** Element ID of the fluid currently held in this network (0 = empty / unset). */
+	// =========================================================================
+	/** The fluid type this module accepts (e.g. HELIOGEN_CANISTER_FILLED). */
 	private short fluidId;
-	/**
-	 * Fluid units currently stored across the whole network.
-	 * Always clamped to {@link #tankCapacity} by {@link #recalculateCapacity()}.
-	 */
-	private double currentFluidLevel;
-	/**
-	 * Total capacity in fluid units — derived structurally from
-	 * {@code tankSegments.size() × capacityPerBlock}. Never set directly from outside.
-	 */
-	private double tankCapacity;
 
 	public FluidTankSystemModule(SegmentController entity, ManagerContainer<?> managerContainer) {
 		super(entity, managerContainer, ResourcesRefueled.getInstance(), ElementRegistry.FLUID_TANK.getId());
-		recalculateCapacity();
+		this.fluidId = ElementRegistry.HELIOGEN_CANISTER_FILLED.getId();
 	}
+
+	/**
+	 * Returns the six face-adjacent block indices for the given index.
+	 * Uses {@link ElementCollection#getPosFromIndex} to decode and re-encode neighbours.
+	 */
+	private static Set<Long> faceAdjacentIndices(long index) {
+		Vector3i pos = new Vector3i();
+		ElementCollection.getPosFromIndex(index, pos);
+		Set<Long> result = new HashSet<>(6);
+		result.add(ElementCollection.getIndex(pos.x + 1, pos.y, pos.z));
+		result.add(ElementCollection.getIndex(pos.x - 1, pos.y, pos.z));
+		result.add(ElementCollection.getIndex(pos.x, pos.y + 1, pos.z));
+		result.add(ElementCollection.getIndex(pos.x, pos.y - 1, pos.z));
+		result.add(ElementCollection.getIndex(pos.x, pos.y, pos.z + 1));
+		result.add(ElementCollection.getIndex(pos.x, pos.y, pos.z - 1));
+		return result;
+	}
+
+	private static BoundingBox buildBoundingBox(LongArrayList tankIndices) {
+		BoundingBox bb = new BoundingBox();
+		if(tankIndices.isEmpty()) return bb;
+		Vector3i min = new Vector3i(Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE);
+		Vector3i max = new Vector3i(Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE);
+		Vector3i pos = new Vector3i();
+		for(int i = 0; i < tankIndices.size(); i++) {
+			ElementCollection.getPosFromIndex(tankIndices.getLong(i), pos);
+			min.set(Math.min(min.x, pos.x), Math.min(min.y, pos.y), Math.min(min.z, pos.z));
+			max.set(Math.max(max.x, pos.x), Math.max(max.y, pos.y), Math.max(max.z, pos.z));
+		}
+		bb.set(min.toVector3f(), max.toVector3f());
+		return bb;
+	}
+
+	// =========================================================================
+	// Constructor
+	// =========================================================================
 
 	@Override
 	public void handle(Timer timer) {
 		// Future: per-tick pump-driven fluid flow between sub-networks.
 	}
 
-	// -------------------------------------------------------------------------
-	// Constructor
-	// -------------------------------------------------------------------------
-
-	/**
-	 * Called by the engine when a block belonging to this module's registered ID set
-	 * is placed on the entity.
-	 * <p>
-	 * Routes the block into {@link #tankSegments} or {@link #pipeSegments} depending on
-	 * type. Does <em>not</em> call {@code super.handlePlace()} so the inherited
-	 * {@code blocks} map is never populated for fluid-network blocks.
-	 *
-	 * @param abs         Absolute packed block index (includes orientation bits).
-	 * @param orientation Block orientation byte.
-	 */
-	@Override
-	public void handlePlace(long abs, byte orientation) {
-		long posIndex = ElementCollection.getPosIndexFrom4(abs);
-		short type = getBlockTypeAt(posIndex);
-		if(type == ElementRegistry.FLUID_TANK.getId()) {
-			tankSegments.put(posIndex, new FluidTankSegment(posIndex, type));
-			recalculateCapacity();
-		} else if(ElementRegistry.isPipe(type)) {
-			pipeSegments.put(posIndex, new FluidPipeSegment(posIndex, type));
-			flagUpdatedData();
-		}
-	}
-
-	// -------------------------------------------------------------------------
+	// =========================================================================
 	// SystemModule lifecycle
-	// -------------------------------------------------------------------------
+	// =========================================================================
 
 	/**
-	 * Called by the engine when a block belonging to this module's registered ID set
-	 * is removed from the entity.
+	 * Registers a newly placed block and merges all adjacent networks into one.
 	 * <p>
-	 * Removes the block from the appropriate map. Does <em>not</em> call
-	 * {@code super.handleRemove()} so the inherited {@code blocks} map is unaffected.
+	 * Only tank and pipe blocks are handled; all other types are ignored.
 	 *
-	 * @param abs Absolute packed block index (includes orientation bits).
+	 * @param index       Block position index (from the event, no orientation bits).
+	 * @param blockType   Element ID of the placed block.
 	 */
-	@Override
-	public void handleRemove(long abs) {
-		long posIndex = ElementCollection.getPosIndexFrom4(abs);
-		if(tankSegments.remove(posIndex) != null) {
-			recalculateCapacity();
-		} else if(pipeSegments.remove(posIndex) != null) {
-			flagUpdatedData();
+	public void onPlace(long index, short blockType) {
+		if(blockType == ElementRegistry.FLUID_TANK.getId()) {
+			tankSegments.put(index, new FluidTankSegment(index, blockType));
+		} else if(ElementRegistry.isPipe(blockType)) {
+			pipeSegments.put(index, new FluidPipeSegment(index, blockType));
+		} else {
+			return; // not a fluid-network block
+		}
+
+		// Collect all networks that are adjacent to this new block.
+		Set<Long> neighbours = faceAdjacentIndices(index);
+		List<FluidNetwork> adjacentNetworks = new ArrayList<>();
+		for(FluidNetwork net : networks) {
+			for(long nb : neighbours) {
+				if(net.memberIndices.contains(nb)) {
+					adjacentNetworks.add(net);
+					break;
+				}
+			}
+		}
+
+		// Merge all adjacent networks + the new block into a single network.
+		FluidNetwork merged = new FluidNetwork();
+		merged.memberIndices.add(index);
+		for(FluidNetwork net : adjacentNetworks) {
+			merged.memberIndices.addAll(net.memberIndices);
+			merged.fluidLevel += net.fluidLevel;
+			networks.remove(net);
+		}
+		recalculateNetworkCapacity(merged);
+		// Clamp in case merged capacity is somehow less than combined fluid (shouldn't happen on add, but be safe).
+		merged.fluidLevel = Math.min(merged.fluidLevel, merged.tankCapacity);
+		networks.add(merged);
+
+		flagUpdatedData();
+		if(ConfigManager.isDebugMode()) {
+			ResourcesRefueled.getInstance().logInfo("[FluidNetwork] Placed " + blockType + " @ " + index + " — networks: " + networks.size() + ", merged capacity: " + merged.tankCapacity);
 		}
 	}
 
-	// -------------------------------------------------------------------------
-	// Block placement / removal
-	// -------------------------------------------------------------------------
+	// =========================================================================
+	// Placement / removal (called by SegmentPieceEventHandler)
+	// =========================================================================
 
 	/**
-	 * Recomputes {@link #tankCapacity} from the current number of tank segments and
-	 * the configured per-block capacity. Clamps {@link #currentFluidLevel} so it
-	 * never exceeds the new capacity. Calls {@link #flagUpdatedData()} to mark the
-	 * module dirty for network sync.
+	 * Removes a block from its network and re-partitions the remaining members
+	 * into new connected components, distributing fluid proportionally by capacity.
+	 *
+	 * @param index     Block position index (no orientation bits).
+	 * @param blockType Element ID of the removed block.
 	 */
-	private void recalculateCapacity() {
-		tankCapacity = tankSegments.size() * ConfigManager.getFluidTankCapacityPerBlock();
-		if(currentFluidLevel > tankCapacity) {
-			currentFluidLevel = tankCapacity;
+	public void onRemove(long index, short blockType) {
+		boolean wasTank = tankSegments.remove(index) != null;
+		boolean wasPipe = !wasTank && pipeSegments.remove(index) != null;
+		if(!wasTank && !wasPipe) return;
+
+		// Find the network this block belonged to.
+		FluidNetwork ownerNetwork = null;
+		for(FluidNetwork net : networks) {
+			if(net.memberIndices.contains(index)) {
+				ownerNetwork = net;
+				break;
+			}
 		}
+		if(ownerNetwork == null) {
+			flagUpdatedData();
+			return;
+		}
+
+		double savedFluid = ownerNetwork.fluidLevel;
+		networks.remove(ownerNetwork);
+		ownerNetwork.memberIndices.remove(index);
+
+		if(ownerNetwork.memberIndices.isEmpty()) {
+			// Nothing left — fluid is lost (pipe/tank was destroyed with no neighbours).
+			flagUpdatedData();
+			return;
+		}
+
+		// Re-flood the remaining members into one or more new networks.
+		List<FluidNetwork> newNetworks = floodPartition(ownerNetwork.memberIndices);
+
+		// Distribute fluid proportionally by new capacity so none is created or destroyed.
+		double totalNewCapacity = 0;
+		for(FluidNetwork net : newNetworks) {
+			recalculateNetworkCapacity(net);
+			totalNewCapacity += net.tankCapacity;
+		}
+		for(FluidNetwork net : newNetworks) {
+			double fraction = (totalNewCapacity > 0) ? net.tankCapacity / totalNewCapacity : 1.0 / newNetworks.size();
+			net.fluidLevel = Math.min(savedFluid * fraction, net.tankCapacity);
+		}
+
+		networks.addAll(newNetworks);
 		flagUpdatedData();
+		if(ConfigManager.isDebugMode()) {
+			ResourcesRefueled.getInstance().logInfo("[FluidNetwork] Removed " + blockType + " @ " + index + " — split into " + newNetworks.size() + " network(s).");
+		}
+	}
+
+	@Override
+	public void handlePlace(long index, byte blockType) {
+		//Do nothing — we need the full short block type, so this is handled by onPlace() instead.
+		//We just need to ensure that the parent method doesnt do anything, since the event handler will call onPlace() with the full block type.
+	}
+
+	@Override
+	public void handleRemove(long index) {
+		//Do nothing — we need the full short block type, so this is handled by onRemove() instead.
+		//We just need to ensure that the parent method doesnt do anything, since the event handler will call onRemove() with the full block type.
+	}
+
+	/**
+	 * Partitions a set of block indices into connected components using BFS.
+	 * A block is connected to its face-adjacent neighbours that are also in the set.
+	 *
+	 * @param members The full set of indices to partition (not modified).
+	 * @return One {@link FluidNetwork} per connected component.
+	 */
+	private List<FluidNetwork> floodPartition(Set<Long> members) {
+		Set<Long> unvisited = new HashSet<>(members);
+		List<FluidNetwork> result = new ArrayList<>();
+
+		while(!unvisited.isEmpty()) {
+			FluidNetwork component = new FluidNetwork();
+			Queue<Long> queue = new ArrayDeque<>();
+			long seed = unvisited.iterator().next();
+			queue.add(seed);
+			unvisited.remove(seed);
+
+			while(!queue.isEmpty()) {
+				long current = queue.poll();
+				component.memberIndices.add(current);
+				for(long nb : faceAdjacentIndices(current)) {
+					if(unvisited.contains(nb)) {
+						unvisited.remove(nb);
+						queue.add(nb);
+					}
+				}
+			}
+			result.add(component);
+		}
+		return result;
+	}
+
+	// =========================================================================
+	// Connectivity helpers
+	// =========================================================================
+
+	/**
+	 * Sets {@link FluidNetwork#tankCapacity} based on how many of the network's
+	 * member indices are registered tank segments.
+	 */
+	private void recalculateNetworkCapacity(FluidNetwork net) {
+		int tankCount = 0;
+		for(long idx : net.memberIndices) {
+			if(tankSegments.containsKey(idx)) tankCount++;
+		}
+		net.tankCapacity = tankCount * ConfigManager.getFluidTankCapacityPerBlock();
 	}
 
 	@Override
 	public void onTagSerialize(PacketWriteBuffer buffer) throws IOException {
 		buffer.writeShort(fluidId);
-		buffer.writeDouble(currentFluidLevel);
-
-		// Tank segments
-		buffer.writeInt(tankSegments.size());
-		for(FluidTankSegment seg : tankSegments.values()) {
-			buffer.writeLong(seg.blockIndex);
-			buffer.writeShort(seg.blockType);
-		}
-
-		// Pipe segments
-		buffer.writeInt(pipeSegments.size());
-		for(FluidPipeSegment seg : pipeSegments.values()) {
-			buffer.writeLong(seg.blockIndex);
-			buffer.writeShort(seg.blockType);
+		buffer.writeInt(networks.size());
+		for(FluidNetwork net : networks) {
+			buffer.writeDouble(net.fluidLevel);
+			buffer.writeInt(net.memberIndices.size());
+			for(long idx : net.memberIndices) {
+				buffer.writeLong(idx);
+				// Write block type so we can rebuild tankSegments/pipeSegments on deserialise.
+				short type;
+				if(tankSegments.containsKey(idx)) {
+					type = tankSegments.get(idx).blockType;
+				} else if(pipeSegments.containsKey(idx)) {
+					type = pipeSegments.get(idx).blockType;
+				} else {
+					type = 0;
+				}
+				buffer.writeShort(type);
+			}
 		}
 	}
-
-	// -------------------------------------------------------------------------
-	// Capacity
-	// -------------------------------------------------------------------------
 
 	@Override
 	public void onTagDeserialize(PacketReadBuffer buffer) throws IOException {
 		fluidId = buffer.readShort();
-		currentFluidLevel = buffer.readDouble();
-
-		// Tank segments
 		tankSegments.clear();
-		int tankCount = buffer.readInt();
-		for(int i = 0; i < tankCount; i++) {
-			long index = buffer.readLong();
-			short type = buffer.readShort();
-			tankSegments.put(index, new FluidTankSegment(index, type));
-		}
-
-		// Pipe segments
 		pipeSegments.clear();
-		int pipeCount = buffer.readInt();
-		for(int i = 0; i < pipeCount; i++) {
-			long index = buffer.readLong();
-			short type = buffer.readShort();
-			pipeSegments.put(index, new FluidPipeSegment(index, type));
-		}
+		networks.clear();
 
-		// Capacity is always structural — derive it from the restored map.
-		recalculateCapacity();
+		int networkCount = buffer.readInt();
+		for(int n = 0; n < networkCount; n++) {
+			FluidNetwork net = new FluidNetwork();
+			net.fluidLevel = buffer.readDouble();
+			int memberCount = buffer.readInt();
+			for(int m = 0; m < memberCount; m++) {
+				long idx = buffer.readLong();
+				short type = buffer.readShort();
+				net.memberIndices.add(idx);
+				if(type == ElementRegistry.FLUID_TANK.getId()) {
+					tankSegments.put(idx, new FluidTankSegment(idx, type));
+				} else if(ElementRegistry.isPipe(type)) {
+					pipeSegments.put(idx, new FluidPipeSegment(idx, type));
+				}
+			}
+			recalculateNetworkCapacity(net);
+			net.fluidLevel = Math.min(net.fluidLevel, net.tankCapacity);
+			networks.add(net);
+		}
 	}
 
-	// -------------------------------------------------------------------------
+	// =========================================================================
 	// Serialisation
-	// -------------------------------------------------------------------------
+	// =========================================================================
 
 	@Override
 	public double getPowerConsumedPerSecondResting() {
@@ -210,13 +343,13 @@ public class FluidTankSystemModule extends SystemModule {
 		return 0;
 	}
 
-	// -------------------------------------------------------------------------
+	// =========================================================================
 	// SystemModule power stubs
-	// -------------------------------------------------------------------------
+	// =========================================================================
 
 	@Override
 	public String getName() {
-		return "Fluid Tank System Module - " + ElementKeyMap.getInfo(fluidId).getName();
+		return "Fluid Tank System Module";
 	}
 
 	public short getFluidId() {
@@ -228,83 +361,147 @@ public class FluidTankSystemModule extends SystemModule {
 		flagUpdatedData();
 	}
 
-	// -------------------------------------------------------------------------
-	// Accessors
-	// -------------------------------------------------------------------------
+	// =========================================================================
+	// Accessors — aggregate across all networks
+	// =========================================================================
 
-	/** Structural capacity — always derived from {@code tankSegments.size() × capacityPerBlock}. */
-	public double getTankCapacity() {
-		return tankCapacity;
-	}
-
+	/**
+	 * Total fluid level summed across all networks.
+	 * Used by {@link videogoose.resourcesrefueled.fuel.EntityFuelManager} and jump logic.
+	 */
 	public double getCurrentFluidLevel() {
-		return currentFluidLevel;
+		double total = 0;
+		for(FluidNetwork net : networks) total += net.fluidLevel;
+		return total;
 	}
 
-	public void setCurrentFluidLevel(double currentFluidLevel) {
-		this.currentFluidLevel = Math.max(0, Math.min(currentFluidLevel, tankCapacity));
+	/**
+	 * Sets the total fluid level across all networks, distributing proportionally
+	 * by each network's capacity. Used by write-back from {@link videogoose.resourcesrefueled.fuel.EntityFuelManager}.
+	 */
+	public void setCurrentFluidLevel(double totalLevel) {
+		double totalCapacity = getTankCapacity();
+		if(totalCapacity <= 0) return;
+		double clamped = Math.min(totalLevel, totalCapacity);
+		for(FluidNetwork net : networks) {
+			double share = (net.tankCapacity / totalCapacity) * clamped;
+			net.fluidLevel = Math.min(share, net.tankCapacity);
+		}
 		flagUpdatedData();
 	}
 
-	/** Read-only view of the tank-segment map (for testing / debugging). */
+	/**
+	 * Total capacity summed across all networks.
+	 */
+	public double getTankCapacity() {
+		double total = 0;
+		for(FluidNetwork net : networks) total += net.tankCapacity;
+		return total;
+	}
+
+	/**
+	 * Drains {@code amount} fluid units from the networks, consuming from each
+	 * proportionally to its current level. Returns the amount actually drained.
+	 * <p>
+	 * This is the primary method for all fuel-consumption code.
+	 */
+	public double drain(double amount) {
+		double totalAvailable = getCurrentFluidLevel();
+		if(totalAvailable <= 0 || amount <= 0) return 0;
+		double toDrain = Math.min(amount, totalAvailable);
+		double fraction = toDrain / totalAvailable;
+		double drained = 0;
+		for(FluidNetwork net : networks) {
+			double take = net.fluidLevel * fraction;
+			net.fluidLevel -= take;
+			drained += take;
+		}
+		flagUpdatedData();
+		return drained;
+	}
+
+	/** Live network list — for direct inspection by consumers. */
+	public List<FluidNetwork> getNetworks() {
+		return networks;
+	}
+
+	/** Read-only view of all tank segments. */
 	public HashMap<Long, FluidTankSegment> getTankSegments() {
 		return tankSegments;
 	}
 
-	/** Read-only view of the pipe-segment map (for testing / debugging). */
+	/** Read-only view of all pipe segments. */
 	public HashMap<Long, FluidPipeSegment> getPipeSegments() {
 		return pipeSegments;
 	}
 
 	/**
-	 * Returns the block indices of all tank segments for explosion origin scatter.
+	 * Returns the tank block indices for the network that contains {@code blockIndex},
+	 * or all tank indices if the block is not found in any network.
+	 * Used to scatter explosion origins across the affected physical tank blocks.
 	 */
+	public LongArrayList getBlockIndicesForExplosion(long blockIndex) {
+		for(FluidNetwork net : networks) {
+			if(net.memberIndices.contains(blockIndex)) {
+				LongArrayList indices = new LongArrayList();
+				for(long idx : net.memberIndices) {
+					if(tankSegments.containsKey(idx)) indices.add(idx);
+				}
+				return indices;
+			}
+		}
+		// Fallback: all tank indices
+		return getBlockIndices();
+	}
+
+	/** All tank block indices across all networks. */
 	public LongArrayList getBlockIndices() {
 		LongArrayList indices = new LongArrayList(tankSegments.size());
-		for(long index : tankSegments.keySet()) {
-			indices.add(index);
-		}
+		for(long index : tankSegments.keySet()) indices.add(index);
 		return indices;
 	}
 
+	// =========================================================================
+	// Explosion helpers
+	// =========================================================================
+
 	/**
-	 * Computes the axis-aligned bounding box that encloses all tank segments.
-	 * Used to determine explosion radius and origin during tank destruction.
+	 * Returns the fluid level of the network containing {@code blockIndex},
+	 * or the total fluid level if not found. Used by explosion scaling.
 	 */
+	public double getFluidLevelForBlock(long blockIndex) {
+		for(FluidNetwork net : networks) {
+			if(net.memberIndices.contains(blockIndex)) return net.fluidLevel;
+		}
+		return getCurrentFluidLevel();
+	}
+
+	/**
+	 * Returns the capacity of the network containing {@code blockIndex},
+	 * or the total capacity if not found. Used by explosion radius scaling.
+	 */
+	public double getCapacityForBlock(long blockIndex) {
+		for(FluidNetwork net : networks) {
+			if(net.memberIndices.contains(blockIndex)) return net.tankCapacity;
+		}
+		return getTankCapacity();
+	}
+
+	/**
+	 * AABB of the tank blocks in the network that contains {@code blockIndex}.
+	 * Falls back to all tank blocks if not found.
+	 */
+	public BoundingBox getBoundingBoxForBlock(long blockIndex) {
+		LongArrayList tankIndices = getBlockIndicesForExplosion(blockIndex);
+		return buildBoundingBox(tankIndices);
+	}
+
+	/** AABB enclosing all tank blocks across all networks. */
 	public BoundingBox getBoundingBox() {
-		BoundingBox boundingBox = new BoundingBox();
-		Vector3i min = new Vector3i(Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE);
-		Vector3i max = new Vector3i(Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE);
-		Vector3i pos = new Vector3i();
-		for(long index : tankSegments.keySet()) {
-			ElementCollection.getPosFromIndex(index, pos);
-			min.set(Math.min(min.x, pos.x), Math.min(min.y, pos.y), Math.min(min.z, pos.z));
-			max.set(Math.max(max.x, pos.x), Math.max(max.y, pos.y), Math.max(max.z, pos.z));
-		}
-		if(!tankSegments.isEmpty()) {
-			boundingBox.set(min.toVector3f(), max.toVector3f());
-		}
-		return boundingBox;
+		return buildBoundingBox(getBlockIndices());
 	}
 
-	// -------------------------------------------------------------------------
-	// Explosion helpers (read from tankSegments, not the inherited blocks map)
-	// -------------------------------------------------------------------------
-
-	/**
-	 * Resolves the block type at the given position index from the entity's segment data.
-	 * Returns 0 if the type cannot be determined (safe fallback — the block simply won't
-	 * match any segment category).
-	 */
-	private short getBlockTypeAt(long posIndex) {
-		try {
-			return segmentController.getSegmentBuffer().getPointUnsave(posIndex).getType();
-		} catch(Exception e) {
-			return 0;
-		}
-	}
-
-	/** One placed FLUID_TANK block that contributes capacity to the network. */
+	/** One placed {@code FLUID_TANK} block — contributes capacity to its network. */
 	public static final class FluidTankSegment {
 		public final long blockIndex;
 		public final short blockType;
@@ -315,10 +512,6 @@ public class FluidTankSystemModule extends SystemModule {
 		}
 	}
 
-	// -------------------------------------------------------------------------
-	// Internal helpers
-	// -------------------------------------------------------------------------
-
 	/** One placed pipe-network block (pipe, pump, valve, filter). */
 	public static final class FluidPipeSegment {
 		public final long blockIndex;
@@ -327,6 +520,27 @@ public class FluidTankSystemModule extends SystemModule {
 		public FluidPipeSegment(long blockIndex, short blockType) {
 			this.blockIndex = blockIndex;
 			this.blockType = blockType;
+		}
+	}
+
+	/**
+	 * A single connected component of the fluid network.
+	 * <p>
+	 * Membership ({@link #memberIndices}) covers both tank and pipe blocks.
+	 * Capacity is derived structurally: {@code tankCount × capacityPerBlock}.
+	 * Fluid level is never allowed to exceed capacity.
+	 */
+	public static final class FluidNetwork {
+		/** All block indices (tanks + pipes) that belong to this network. */
+		public final Set<Long> memberIndices = new HashSet<>();
+		/** Current stored fluid units. Always ≤ {@link #tankCapacity}. */
+		public double fluidLevel;
+		/** Cached capacity — recalculated by {@link FluidTankSystemModule#recalculateNetworkCapacity}. */
+		public double tankCapacity;
+
+		/** True when this network has no blocks at all. */
+		public boolean isEmpty() {
+			return memberIndices.isEmpty();
 		}
 	}
 }
