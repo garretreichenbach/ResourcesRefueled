@@ -1,12 +1,89 @@
-Name & register the new resource items in a new FuelElementManager class (called from ResourcesRefueled.onEnable via EventManager): register Heliogen Plasma (raw, unplaceable item like a capsule), Heliogen Canister (stackable small-storage item), and a Heliogen Tank multiblock (computer + module pair, volatile/explosive on destruction) — all via BlockConfig using the same patterns as RRSElementInfoManager.java.
-Create a StellarFuelSupplier (parallel to PassiveResourceSupplier) that: (a) holds a regen rate derived from StellarSystem.getTemperature() and the system's SystemClass (hotter/larger stars = higher yield), (b) tracks a safe proximity radius beyond which collection is possible, and a damage radius within which ships/stations take periodic hull damage. Store these per star-sector in the existing PassiveResourceSourcesContainer or a parallel StellarFuelSourcesContainer owned by ResourcesRefueled.
-Write a Mixin targeting ExtractorTickFastListener.onPreManufacture — at @At("HEAD"), check the operating entity's linked Inventory/cargo for Heliogen Canister or adjacent Heliogen Tank blocks. If fueled: consume per-tick based on harvester.getStrength() × a config multiplier and proceed normally. If unfueled: allow extraction to continue at a configurable reduced efficiency (e.g. 30% default), so players aren't hard-blocked but are incentivised to fuel. Register the mixin in resourcesrefueled.mixins.json.
-Hook FTL fuel consumption via the existing ShipJumpEngageEvent listener in EventManager.java: on jump, check ship cargo for Heliogen. If sufficient: deduct based on jump distance × a config multiplier and allow. If insufficient: permit the jump but apply a long configurable cooldown penalty (via a StarRunnable-based cooldown tracker) and reduced effective range, so players can still escape but are punished for running dry.
-Add a SolarCondenser station block (a new factory-type block, registered alongside the Heliogen items in step 1) whose FactoryManufactureListener recipe converts Anbaric Capsule + Parsyne Capsule → Heliogen Plasma at a rate boosted by proximity to the star sector — hook this into ProductionTickFastListener via a second Mixin @Inject on onProduceItem. Add a refinery recipe: Heliogen Plasma × N → Heliogen Canister via BlockConfig.addRefineryRecipe.
-Add star damage logic in a new StarProximityTickListener (StarRunnable on a server-side timer): each tick, check all loaded entities near a registered star sector; if within the damage radius for their star's SystemClass, apply hull damage scaled to proximity. The StellarFuelSupplier from step 2 exposes getDamageRadius() and getSafeCollectionRadius() derived from the star's temperature value.
-Wire config keys in ConfigManager.java: fuel_cost_per_extraction_strength_unit, unfueled_extraction_efficiency (default 0.3), ftl_fuel_per_sector, ftl_unfueled_cooldown_multiplier, tank_explosion_yield, and per-SystemClass yield/damage radius overrides.
+# ResourcesRefueled — Implementation Plan
 
-Further Considerations
-StellarFuelSourcesContainer vs. reusing PassiveResourceSourcesContainer — A parallel container class keeps concerns clean and avoids patching RRS's save/load serialization, but requires its own persistence via PersistentObjectUtil. Recommended: new container, same serialization pattern.
-Tank explosion mechanic — When a Heliogen Tank module block is destroyed (via SegmentPieceKilledListener), trigger an explosion proportional to stored fuel amount. The StarMade API exposes Damager-based damage calls; the exact explosion API method will need to be confirmed against StarMade.jar.
-"Heliogen" fits the RRS naming style well — it's scientific-sounding, star-derived (helios + -gen), and sits naturally alongside Parsyne, Anbaric, and Thermyn. Alternative: Solite (denser, mineral-feeling) or Caelum Flux (more exotic/lore-flavored). Your call — happy to go with any of the three.
+## Checklist
+
+### 1. 🟡 Register Heliogen items & blocks
+Register all new elements via `BlockConfig` in `ElementRegistry`, called from `ResourcesRefueled.onBlockConfigLoad`.
+
+- ✅ `HeliogenPlasma` — raw unplaceable item
+- ✅ `HeliogenCanisterEmpty` / `HeliogenCanisterFilled` — portable fuel items
+- ✅ `HeliogenCondenser` — factory-type station block (`BlockConfig.newFactory`)
+- ✅ `HeliogenRefinery` — refinery block (`BlockConfig.newRefinery`), Plasma → Canister recipe
+- ✅ `HeliogenRefineryController` — computer block, wired to refinery modules
+- ✅ `FluidTank` — generic pressurised fluid storage block (replaces `HeliogenTank`); Heliogen instance registered as `HELIOGEN_TANK` in `ElementRegistry`
+- ✅ `FluidPipe`, `FluidPump`, `FluidValve`, `FluidFilter` — pipe network blocks registered
+- ⬜ Block assembly recipes for all blocks (need adding in `postInitData` / a recipe manager)
+- ⬜ Custom textures / icons for all elements (placeholder vanilla textures in use)
+- ✅ `ElementRegistry.isFluidTank()` helper — implemented
+
+---
+
+### 2. ✅ StellarFuelSupplier + StellarFuelSourcesContainer
+Passive Heliogen supply tied to star proximity, no zone maps required.
+
+- ✅ `StellarFuelSupplier` — per-system passive pool, regen rate derived from `SystemClass`, lazy `updatePassivePool` with timestamp tracking
+- ✅ `StellarFuelSourcesContainer` — `HashMap<Vector3i, StellarFuelSupplier>` keyed by system pos, lazy `getOrCreate` via `ResourcesReSourced.getSystemSheet`
+- ✅ `StellarFuelManager` — owns static container, `loadFuelData` / `saveFuelData` via `PersistentObjectUtil`, mirrors RRS persistence pattern exactly
+- ✅ `StellarFuelSupplier.getBaseRegenForClass` — yield table covering all `SystemClass` values; void systems return 0
+- ✅ `StellarFuelSourcesContainer.systemPosFromSector` — `VoidSystem.getPosFromSector` wrapper
+
+---
+
+### 3. ✅ Extractor fuel consumption mixin
+Intercepts RRS's `ExtractorTickFastListener.onPreManufacture`.
+
+- ✅ `MixinExtractorTickListener` — `@Inject` at `HEAD`, checks inventory for filled canisters, consumes them and returns empties as the "recipe" side of the fuel loop
+- ✅ `FuelTickState` — external holder for the per-tick unfueled flag (required because Mixin disallows non-private static members)
+- ✅ `HarvesterFuelEfficiencyListener` — reads `FuelTickState`, scales extraction power by `unfueled_extraction_efficiency` via `HarvesterStrengthUpdateEvent`
+- ✅ Registered in `resourcesrefueled.mixins.json`
+- ⬜ Void-system short-circuit (currently marks unfueled but does not cancel extraction outright — consider whether void systems should block entirely)
+
+---
+
+### 4. ✅ FTL fuel consumption
+Hooks `ShipJumpEngageEvent`, cancels the vanilla jump, executes a custom `SectorSwitch`.
+
+- ✅ `ShipJumpFuelListener` — standalone `Listener` class, registered in `EventManager`
+- ✅ Tank-first, inventory-canister fallback priority order
+- ✅ Partial tank drain + inventory top-up logic
+- ✅ `calcShortJumpTarget` — proportional redirect toward target when underfueled; guarantees ≥1 sector of progress, never overshoots
+- ✅ `countInventoryCanisters` — counts across all ship inventories
+- ✅ `handleJump` — cancels event, queues `SectorSwitch` with graphics effect
+- ⬜ FTL cooldown penalty for underfueled jumps (TODO in code — `ShipJumpEngageEvent` cooldown API method not yet confirmed)
+
+---
+
+### 5. 🟡 Solar Condenser production
+Star-proximity-boosted Anbaric + Parsyne → Heliogen Plasma conversion.
+
+- ✅ `HeliogenCondenser` block registered with `BlockConfig.newFactory`
+- ✅ Recipe stub in `HeliogenCondenser.postInitData` (Anbaric Vapor + Parsyne Plasma → Heliogen Plasma)
+- ⬜ `SolarCondenserTickListener` — `FactoryManufactureListener` that multiplies output by `SystemSheet.getTemperature(factoryEntity.getSector(...))` at runtime
+- ⬜ Register listener in `EventManager` via `FastListenerCommon`
+
+---
+
+### 6. 🟡 Tank explosion on destruction
+- ✅ `SegmentPieceKillEvent` — checks `ElementRegistry.isFluidTank`, reads `FluidTankSystemModule` fuel level, spawns `ModuleExplosion` list scaled to fluid level and tank capacity
+- ✅ `FluidTankSystemModule` — `SystemModule` subclass with `TankSystemData` (fluid type, capacity, level), full serialization
+- ✅ `FluidTankSystemModule.getBlockIndices()` / `getBoundingBox()` — used for explosion origin and radius calculations
+
+---
+
+### 7. 🟡 Config keys
+- ✅ `fuel_cost_per_strength_unit` (0.5)
+- ✅ `unfueled_extraction_efficiency` (0.3)
+- ✅ `ftl_fuel_per_sector` (1.0)
+- ✅ `fuel_per_canister` (100.0)
+- ✅ `ftl_unfueled_cooldown_multiplier` (3.0) — wired in config, not yet applied in code
+- ✅ `tank_explosion_yield_per_unit` — superseded by `fluid_level_per_explosion` / `max_fluid_explosion_radius` / `fluid_explosion_damage` used in kill listener
+- ✅ `fluid_level_per_explosion`, `max_fluid_explosion_radius`, `fluid_explosion_damage` — added to config defaults
+
+---
+
+## Architecture Notes
+
+- **Fluid tank system** — `FluidTank` block is generic; future fluids (e.g. coolant, fuel oil) just need a new `ElementRegistry` entry with a different `fluidIdSupplier`. Texture system planned for later (supplier pattern already supports per-fluid dynamic textures).
+- **Pipe network** — `FluidPipe`, `FluidPump`, `FluidValve`, `FluidFilter` registered as blocks; actual fluid transport logic is a future milestone.
+- **Persistence** — `StellarFuelManager` mirrors RRS's `loadExtractorData`/`saveExtractorData` exactly. Load on `ServerInitializeEvent`, save on `WorldSaveEvent` and `onDisable`. Lazy supplier init means no galaxy-gen hook needed.
+- **`onDisable` save** — `StellarFuelManager.saveFuelData()` needs hooking into `ResourcesRefueled.onDisable()`.

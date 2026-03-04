@@ -5,6 +5,7 @@ import api.listener.events.controller.ClientInitializeEvent;
 import api.mod.StarMod;
 import org.schema.schine.resource.ResourceLoader;
 import videogoose.resourcesrefueled.element.ElementRegistry;
+import videogoose.resourcesrefueled.fuel.StellarFuelManager;
 import videogoose.resourcesrefueled.manager.ConfigManager;
 import videogoose.resourcesrefueled.manager.EventManager;
 import videogoose.resourcesrefueled.manager.ResourceManager;
@@ -21,11 +22,15 @@ public final class ResourcesRefueled extends StarMod {
 
 	@Override
 	public void onEnable() {
-		super.onEnable();
 		ConfigManager.initialize(this);
 		EventManager.initialize(this);
 		registerCommands();
 		registerPackets();
+	}
+
+	@Override
+	public void onDisable() {
+		StellarFuelManager.saveFuelData();
 	}
 
 	@Override
