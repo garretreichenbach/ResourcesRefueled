@@ -10,7 +10,7 @@ package videogoose.resourcesrefueled.element.item;
 public class HeliogenPlasma extends Item {
 
 	/** Volume per unit — deliberately bulky to incentivise refining into canisters. */
-	public static final float VOLUME = 0.02f;
+	public static final float VOLUME = 0.002f;
 
 	public HeliogenPlasma() {
 		super("Heliogen Plasma");
@@ -21,8 +21,6 @@ public class HeliogenPlasma extends Item {
 		super.initData();
 		itemInfo.description = "Raw stellar plasma distilled from the photonic wind of nearby stars. Extremely energetic, but unstable in bulk quantities.\nRefine in a Heliogen Refinery to produce portable Heliogen Canisters suitable for use as fuel.";
 		itemInfo.volume = VOLUME;
-		itemInfo.mass = 0.001f;
-		itemInfo.price = 50;
 		itemInfo.shoppable = false; // Cannot be bought in shops — must be produced.
 		itemInfo.blockResourceType = 0; // Treated as an ore/raw material.
 	}

@@ -17,10 +17,10 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import videogoose.resourcesrefueled.element.ElementRegistry;
+import videogoose.resourcesrefueled.fuel.EntityFuelManager;
 import videogoose.resourcesrefueled.fuel.FuelTickState;
 import videogoose.resourcesrefueled.manager.ConfigManager;
 import videogoose.resourcesrefueled.systems.FluidTankSystemModule;
-import videogoose.resourcesrefueled.utils.InventoryUtils;
 
 import static org.ithirahad.resourcesresourced.listeners.BlockRemovalLogic.isExtractor;
 
@@ -55,19 +55,20 @@ public class MixinExtractorTickListener {
 		ManagedUsableSegmentController<?> entity = (ManagedUsableSegmentController<?>) factoryCollectionManager.getSegmentController();
 		String uid = entity.getUniqueIdentifier();
 
-		double totalFuel = 0;
-
-		// Source 1: FluidTankSystemModule (may be null if system unloaded)
+		// The entity is live here — write back any pending dirty state from the last tick first
+		// (handles the case where the entity was accessed while partially unloaded last cycle).
 		FluidTankSystemModule tankModule = (FluidTankSystemModule) entity.getManagerContainer().getModMCModule(ElementRegistry.FLUID_TANK.getId());
-		if(tankModule != null && tankModule.getFluidId() == ElementRegistry.HELIOGEN_CANISTER_FILLED.getId()) {
-			totalFuel += tankModule.getCurrentFluidLevel();
-		}
+		EntityFuelManager.writeBackToLive(uid, tankModule, inventory);
 
-		// Source 2: Canisters in factory inventory (always available here)
+		// Now snapshot the current live state into the virtualised cache.
+		// Source 1: FluidTankSystemModule (may be null if this system isn't installed/loaded).
+		// Source 2: Heliogen Canisters in the factory inventory.
 		int canisters = inventory.getOverallQuantity(ElementRegistry.HELIOGEN_CANISTER_FILLED.getId());
-		totalFuel += canisters * ConfigManager.getFuelPerCanister();
+		EntityFuelManager.syncFromLive(uid, tankModule, canisters);
 
-		FuelTickState.availableFuelUnits.put(uid, totalFuel);
+		// Expose the combined total to FuelTickState so HarvesterEnhancerOverrideListener and
+		// onProduceItem can read it without re-touching the entity.
+		FuelTickState.availableFuelUnits.put(uid, EntityFuelManager.getAvailableFuelUnits(uid));
 		FuelTickState.spentFuelUnits.put(uid, 0.0);
 	}
 
@@ -92,29 +93,17 @@ public class MixinExtractorTickListener {
 
 		// Deduct what the strength listener already spent this tick
 		double alreadySpent = FuelTickState.spentFuelUnits.getOrDefault(uid, 0.0);
-		double fuelSpent = Math.max(0, Math.min(costUnits - alreadySpent, available - alreadySpent));
+		double fuelToSpend = Math.max(0, Math.min(costUnits - alreadySpent, available - alreadySpent));
+		if(fuelToSpend <= 0) return;
+
+		// Drain via the virtualised cache — the cache handles tank-first then canister ordering.
+		double fuelSpent = EntityFuelManager.drainFuelUnits(uid, fuelToSpend);
 		if(fuelSpent <= 0) return;
 
-		// Drain tanks first, then canisters for any remainder
-		double remaining = fuelSpent;
+		// Write the drained state back to the live entity (tank + inventory canisters/empties).
+		// The entity is guaranteed live here because we're inside its manufacture tick.
 		FluidTankSystemModule tankModule = (FluidTankSystemModule) entity.getManagerContainer().getModMCModule(ElementRegistry.FLUID_TANK.getId());
-		if(tankModule != null && tankModule.getFluidId() == ElementRegistry.HELIOGEN_CANISTER_FILLED.getId()) {
-			double fromTank = Math.min(tankModule.getCurrentFluidLevel(), remaining);
-			if(fromTank > 0) {
-				tankModule.setCurrentFluidLevel(tankModule.getCurrentFluidLevel() - fromTank);
-				remaining -= fromTank;
-			}
-		}
-
-		// Drain remaining from canisters
-		if(remaining > 0) {
-			int canistersToConsume = (int) Math.ceil(remaining / ConfigManager.getFuelPerCanister());
-			int removed = InventoryUtils.removeItems(inventory, ElementRegistry.HELIOGEN_CANISTER_FILLED.getId(), canistersToConsume);
-			if(removed > 0) {
-				int returned = inventory.incExistingOrNextFreeSlotWithoutException(ElementRegistry.HELIOGEN_CANISTER_EMPTY.getId(), removed);
-				changeSet.add(returned);
-			}
-		}
+		EntityFuelManager.writeBackToLive(uid, tankModule, inventory);
 
 		// Bonus output proportional to fuel actually spent
 		int bonus = (int) Math.floor(quantity * ConfigManager.getFueledExtractionBonus() * (fuelSpent / costUnits));

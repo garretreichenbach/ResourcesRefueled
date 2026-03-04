@@ -11,7 +11,7 @@ package videogoose.resourcesrefueled.element.item;
  */
 public class HeliogenCanisterFilled extends Item {
 
-	public static final float VOLUME = 0.001f;
+	public static final float VOLUME = 0.3f;
 
 	public HeliogenCanisterFilled() {
 		super("Heliogen Canister (Filled)");

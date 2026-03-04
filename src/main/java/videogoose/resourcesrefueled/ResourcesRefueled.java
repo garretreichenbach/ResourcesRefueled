@@ -5,6 +5,7 @@ import api.listener.events.controller.ClientInitializeEvent;
 import api.mod.StarMod;
 import org.schema.schine.resource.ResourceLoader;
 import videogoose.resourcesrefueled.element.ElementRegistry;
+import videogoose.resourcesrefueled.fuel.EntityFuelManager;
 import videogoose.resourcesrefueled.fuel.StellarFuelManager;
 import videogoose.resourcesrefueled.industry.RecipeManager;
 import videogoose.resourcesrefueled.manager.ConfigManager;
@@ -14,9 +15,11 @@ import videogoose.resourcesrefueled.manager.ResourceManager;
 public final class ResourcesRefueled extends StarMod {
 
 	private static ResourcesRefueled instance;
+
 	public ResourcesRefueled() {
 		instance = this;
 	}
+
 	public static ResourcesRefueled getInstance() {
 		return instance;
 	}
@@ -32,6 +35,7 @@ public final class ResourcesRefueled extends StarMod {
 	@Override
 	public void onDisable() {
 		StellarFuelManager.saveFuelData();
+		EntityFuelManager.saveCacheData();
 	}
 
 	@Override

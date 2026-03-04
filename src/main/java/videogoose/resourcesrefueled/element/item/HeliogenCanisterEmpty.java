@@ -8,7 +8,7 @@ package videogoose.resourcesrefueled.element.item;
 public class HeliogenCanisterEmpty extends Item {
 
 	/** Volume per canister — small enough to carry many, big enough to feel meaningful. */
-	public static final float VOLUME = 0.001f;
+	public static final float VOLUME = 0.1f;
 
 	public HeliogenCanisterEmpty() {
 		super("Heliogen Canister (Empty)");

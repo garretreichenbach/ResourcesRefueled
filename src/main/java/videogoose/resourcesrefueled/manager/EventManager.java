@@ -10,6 +10,7 @@ import api.mod.StarLoader;
 import org.ithirahad.resourcesresourced.events.HarvesterStrengthUpdateEvent;
 import videogoose.resourcesrefueled.ResourcesRefueled;
 import videogoose.resourcesrefueled.element.ElementRegistry;
+import videogoose.resourcesrefueled.fuel.EntityFuelManager;
 import videogoose.resourcesrefueled.fuel.StellarFuelManager;
 import videogoose.resourcesrefueled.listener.HarvesterEnhancerOverrideListener;
 import videogoose.resourcesrefueled.listener.SegmentPieceKillEvent;
@@ -35,7 +36,15 @@ public class EventManager {
 
 			@Override
 			public void onEvent(ManagerContainerRegisterEvent event) {
-				event.addModMCModule(new FluidTankSystemModule(event.getSegmentController(), event.getContainer(), ElementRegistry.FLUID_TANK.getId(), ElementRegistry.HELIOGEN_PLASMA.getId()));
+				FluidTankSystemModule tankModule = new FluidTankSystemModule(event.getSegmentController(), event.getContainer(), ElementRegistry.FLUID_TANK.getId(), ElementRegistry.HELIOGEN_PLASMA.getId());
+				event.addModMCModule(tankModule);
+
+				// Sync the virtualised fuel cache from the live entity state now that it's loaded.
+				// Canister count defaults to 0 at registration time (inventory may not be fully
+				// populated yet); onPreManufacture will call syncFromLive again with the real count
+				// on the first extractor tick.
+				String uid = event.getSegmentController().getUniqueIdentifier();
+				EntityFuelManager.syncFromLive(uid, tankModule, 0);
 			}
 		}, instance);
 
@@ -44,6 +53,7 @@ public class EventManager {
 			@Override
 			public void onEvent(ServerInitializeEvent event) {
 				StellarFuelManager.loadFuelData();
+				EntityFuelManager.loadCacheData();
 			}
 		}, instance);
 
@@ -52,6 +62,7 @@ public class EventManager {
 			@Override
 			public void onEvent(WorldSaveEvent event) {
 				StellarFuelManager.saveFuelData();
+				EntityFuelManager.saveCacheData();
 			}
 		}, instance);
 
