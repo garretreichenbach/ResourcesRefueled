@@ -21,6 +21,14 @@ public class EntityFuelCache implements Serializable {
 	/** Fluid units currently stored in the entity's connected Heliogen tank. */
 	public double tankFluidLevel;
 
+	/**
+	 * Snapshot of tankFluidLevel at the time of the last {@code syncFromLive} call.
+	 * Used by writeBackToLive to compute the delta (how many fluid units were consumed
+	 * from the tank) so it can call {@code tankModule.drain(delta)} directly rather
+	 * than redistributing a flat level across all networks.
+	 */
+	public double snapshotTankFluidLevel;
+
 	/** Number of filled Heliogen Canisters in the entity's factory inventory. */
 	public int canisterCount;
 

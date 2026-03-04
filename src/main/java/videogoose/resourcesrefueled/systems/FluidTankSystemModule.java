@@ -61,7 +61,7 @@ public class FluidTankSystemModule extends SystemModule {
 
 	public FluidTankSystemModule(SegmentController entity, ManagerContainer<?> managerContainer) {
 		super(entity, managerContainer, ResourcesRefueled.getInstance(), ElementRegistry.FLUID_TANK.getId());
-		this.fluidId = ElementRegistry.HELIOGEN_CANISTER_FILLED.getId();
+		fluidId = ElementRegistry.HELIOGEN_CANISTER_FILLED.getId();
 	}
 
 	/**
