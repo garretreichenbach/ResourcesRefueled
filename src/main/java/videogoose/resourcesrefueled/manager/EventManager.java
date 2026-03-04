@@ -7,10 +7,12 @@ import api.listener.events.register.ManagerContainerRegisterEvent;
 import api.listener.events.world.WorldSaveEvent;
 import api.listener.fastevents.FastListenerCommon;
 import api.mod.StarLoader;
+import org.ithirahad.resourcesresourced.events.HarvesterStrengthUpdateEvent;
 import videogoose.resourcesrefueled.ResourcesRefueled;
 import videogoose.resourcesrefueled.element.ElementRegistry;
 import videogoose.resourcesrefueled.fuel.StellarFuelManager;
 import videogoose.resourcesrefueled.industry.RecipeManager;
+import videogoose.resourcesrefueled.listener.HarvesterEnhancerOverrideListener;
 import videogoose.resourcesrefueled.listener.SegmentPieceKillEvent;
 import videogoose.resourcesrefueled.listener.ShipJumpFuelListener;
 import videogoose.resourcesrefueled.listener.SolarCondenserTickListener;
@@ -30,6 +32,9 @@ public class EventManager {
 		// Solar condenser proximity yield bonus + void-system block
 		FastListenerCommon.factoryManufactureListeners.add(new SolarCondenserTickListener());
 
+		// Replace vanilla enhancer bonus on extractors with Heliogen-fuel-based boost
+		StarLoader.registerListener(HarvesterStrengthUpdateEvent.class, new HarvesterEnhancerOverrideListener(), instance);
+
 		StarLoader.registerListener(ManagerContainerRegisterEvent.class, new Listener<ManagerContainerRegisterEvent>() {
 
 			@Override
@@ -37,7 +42,6 @@ public class EventManager {
 				event.addModMCModule(new FluidTankSystemModule(event.getSegmentController(), event.getContainer(), ElementRegistry.HELIOGEN_TANK.getId(), ElementRegistry.HELIOGEN_PLASMA.getId()));
 			}
 		}, instance);
-
 
 		// Load Heliogen persistence on server start
 		StarLoader.registerListener(ServerInitializeEvent.class, new Listener<ServerInitializeEvent>() {
@@ -59,4 +63,3 @@ public class EventManager {
 		StarLoader.registerListener(ShipJumpEngageEvent.class, new ShipJumpFuelListener(), instance);
 	}
 }
-

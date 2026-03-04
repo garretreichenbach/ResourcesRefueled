@@ -2,6 +2,7 @@ package videogoose.resourcesrefueled.element;
 
 import api.common.GameCommon;
 import api.config.BlockConfig;
+import api.utils.element.Blocks;
 import org.schema.game.common.data.element.ElementInformation;
 import videogoose.resourcesrefueled.element.block.pipes.FluidFilter;
 import videogoose.resourcesrefueled.element.block.pipes.FluidPipe;
@@ -65,6 +66,25 @@ public enum ElementRegistry {
 
 	public static boolean isFluidTank(short type) {
 		return type == HELIOGEN_TANK.getId();
+	}
+
+	public static void doOverwrites() {
+		ElementInformation extractor = getInfoByName("Magmatic Extractor");
+		extractor.controlling.remove(Blocks.FACTORY_ENHANCER.getId());
+		Blocks.FACTORY_ENHANCER.getInfo().controlledBy.remove(extractor.id);
+
+		ElementInformation siphon = getInfoByName("Vapor Siphon");
+		siphon.controlling.remove(Blocks.FACTORY_ENHANCER.getId());
+		Blocks.FACTORY_ENHANCER.getInfo().controlledBy.remove(siphon.id);
+	}
+
+	private static ElementInformation getInfoByName(String name) {
+		for(ElementInformation info : BlockConfig.getElements()) {
+			if(info.getName().equals(name)) {
+				return info;
+			}
+		}
+		throw new IllegalStateException("Element with name '" + name + "' not found");
 	}
 
 	public ElementInformation getInfo() {

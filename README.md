@@ -90,23 +90,26 @@ All blocks are assembled in RRS's **Block Assembler** using standard RRS compone
 
 All values are set in `config/ResourcesRefueled/config.yml` on the server.
 
-| Key | Default | Description |
-|---|---|---|
-| `fuel_cost_per_strength_unit` | `0.5` | Canisters consumed per unit of extractor strength per tick |
-| `fueled_extraction_bonus` | `0.5` | Bonus output fraction added per canister consumed when extractors are fueled |
-| `ftl_fuel_per_sector` | `1.0` | Canisters consumed per sector of jump distance |
-| `fuel_per_canister` | `100.0` | Fluid units represented by one filled canister when drawing from a tank |
-| `ftl_unfueled_cooldown_multiplier` | `3.0` | FTL cooldown multiplier for underfueled jumps |
-| `fluid_level_per_explosion` | — | Fluid units per explosion event on tank destruction |
-| `max_fluid_explosion_radius` | — | Maximum explosion radius on a fully loaded tank |
-| `fluid_explosion_damage` | — | Base damage per explosion event |
+| Key | Default | Description                                                                        |
+|---|---------|------------------------------------------------------------------------------------|
+| `fuel_cost_per_strength_unit` | `0.5`   | Fuel units consumed per unit of base output per cycle                              |
+| `fueled_extraction_bonus` | `0.5`   | Bonus output fraction added per unit of fuel consumed                              |
+| `condenser_base_output` | `4`     | Bonus Heliogen Plasma per cycle at proximity 1.0 next to a normal star             |
+| `condenser_proximity_scale` | `true`  | If false, proximity is treated as 1.0 (star class bonus only, no positioning game) |
+| `ftl_fuel_per_sector` | `0.0`   | Canisters consumed per sector of jump distance (feature disabled by default)       |
+| `fuel_per_canister` | `100.0` | Fluid units represented by one filled canister when drawing from a tank            |
+| `ftl_unfueled_cooldown_multiplier` | `3.0`   | FTL cooldown multiplier for underfueled jumps                                      |
+| `fluid_level_per_explosion` | —       | Fluid units per explosion event on tank destruction                                |
+| `max_fluid_explosion_radius` | —       | Maximum explosion radius on a fully loaded tank                                    |
+| `fluid_explosion_damage` | —       | Base damage per explosion event                                                    |
 
 ---
 
 ## Architecture Notes (for developers)
 
 - **Heliogen supply** is tracked per star system in `StellarFuelSupplier`, keyed by system `Vector3i`. Suppliers are created lazily on first access — no galaxy-gen hook required. Works on pre-existing worlds.
-- **Fuel consumption** in extractors is implemented as a Mixin into RRS's `ExtractorTickFastListener`, injected at `HEAD`. No RRS source modification required.
+- **Extractor fuel** is resolved once per tick in `MixinExtractorTickListener.onPreManufacture`, combining `FluidTankSystemModule` level and inventory canister count into a single `FuelTickState.availableFuelUnits` value. Both the strength override listener and `onProduceItem` read from this — no inventory access after `onPreManufacture`.
+- **Enhancer disconnect** — `ElementRegistry.doOverwrites()` removes `FACTORY_ENHANCER` from the `controlling`/`controlledBy` lists of Vapor Siphon and Magmatic Extractor at block config load time. Enhancers still define the extraction ceiling; Heliogen fuel is what drives output toward it.
 - **Fluid tanks** use the `FluidTank` generic block class. Adding a new fluid type requires only a new `ElementRegistry` entry with a different `fluidIdSupplier` — the tank block, module, explosion logic, and pipe routing all work generically.
 - **Persistence** mirrors RRS's `PersistentObjectUtil` pattern exactly: load on `ServerInitializeEvent`, save on `WorldSaveEvent` and `onDisable`.
 
@@ -116,6 +119,5 @@ All values are set in `config/ResourcesRefueled/config.yml` on the server.
 
 - Pipe network fluid transport logic
 - Per-fluid dynamic tank textures
-- FTL cooldown penalty application (pending API confirmation)
 - Custom textures and icons for all blocks and items
 

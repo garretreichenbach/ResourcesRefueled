@@ -43,6 +43,7 @@ public final class ResourcesRefueled extends StarMod {
 		logInfo("Registering elements...");
 		try {
 			ElementRegistry.registerElements();
+			ElementRegistry.doOverwrites();
 			logInfo("Elements registered successfully");
 		} catch(Exception e) {
 			logException("[ResourcesRefueled] Failed to register elements — mod may not function correctly", e);

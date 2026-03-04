@@ -29,12 +29,14 @@ Passive Heliogen supply tied to star proximity, no zone maps required.
 
 ---
 
-### 3. ✅ Extractor fuel boost (mixin)
-Intercepts RRS's `ExtractorTickFastListener.onProduceItem`.
+### 3. ✅ Extractor fuel boost (mixin + enhancer override)
+Intercepts RRS's `ExtractorTickFastListener.onProduceItem` and `HarvesterStrengthUpdateEvent`.
 
-- ✅ `MixinExtractorTickListener` — single `onProduceItem` inject; if filled canisters are present, consumes them and adds bonus resources proportional to `fueled_extraction_bonus` config. Extractors always run at full base efficiency without fuel — Heliogen is a reward, not a gate.
+- ✅ `MixinExtractorTickListener` — `onPreManufacture` resolves combined fuel from `FluidTankSystemModule` + inventory canisters into `FuelTickState.availableFuelUnits`; `onProduceItem` drains tanks first then canisters, returns empties, adds bonus output proportional to fuel spent
+- ✅ `HarvesterEnhancerOverrideListener` — listens for `HarvesterStrengthUpdateEvent`; strips vanilla enhancer bonus, replaces it with a fuel-fraction interpolation between base rate and the enhancer ceiling. Zero inventory access — reads only from `FuelTickState`. Records spent fuel in `FuelTickState.spentFuelUnits` to prevent double-consumption
+- ✅ `FuelTickState` — holds `availableFuelUnits` (Double, combined tank+canister) and `spentFuelUnits` (Double, reserved by strength listener) per entity UID
+- ✅ `ElementRegistry.doOverwrites()` — called from `onBlockConfigLoad`; removes `FACTORY_ENHANCER` from `controlling`/`controlledBy` on Vapor Siphon and Magmatic Extractor so enhancers can no longer be physically connected to extractors
 - ✅ Registered in `resourcesrefueled.mixins.json`
-- ✅ `FuelTickState` and `HarvesterFuelEfficiencyListener` removed — no longer needed
 
 ---
 
@@ -70,11 +72,12 @@ Star-proximity-boosted Anbaric + Parsyne → Heliogen Plasma conversion.
 
 ### 7. 🟡 Config keys
 - ✅ `fuel_cost_per_strength_unit` (0.5)
-- ✅ `unfueled_extraction_efficiency` (0.3)
+- ✅ `fueled_extraction_bonus` (0.5) — bonus output fraction per canister consumed
+- ✅ `condenser_base_output` (4) — bonus plasma per cycle at proximity 1.0 next to a normal star
+- ✅ `condenser_proximity_scale` (true) — if false, proximity is treated as 1.0 (star class bonus only)
 - ✅ `ftl_fuel_per_sector` (1.0)
 - ✅ `fuel_per_canister` (100.0)
 - ✅ `ftl_unfueled_cooldown_multiplier` (3.0) — wired in config, not yet applied in code
-- ✅ `tank_explosion_yield_per_unit` — superseded by `fluid_level_per_explosion` / `max_fluid_explosion_radius` / `fluid_explosion_damage` used in kill listener
 - ✅ `fluid_level_per_explosion`, `max_fluid_explosion_radius`, `fluid_explosion_damage` — added to config defaults
 
 ---
