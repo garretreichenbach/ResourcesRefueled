@@ -1,7 +1,5 @@
 package videogoose.resourcesrefueled.industry;
 
-import api.listener.Listener;
-import api.mod.StarLoader;
 import org.ithirahad.resourcesresourced.events.RRSRecipeAddEvent;
 import org.ithirahad.resourcesresourced.industry.RRSRecipeManager;
 import videogoose.resourcesrefueled.ResourcesRefueled;
@@ -26,16 +24,7 @@ import static org.ithirahad.resourcesresourced.industry.RRSRecipeManager.comp;
  */
 public class RecipeManager {
 
-	public static void initialize(ResourcesRefueled instance) {
-		StarLoader.registerListener(RRSRecipeAddEvent.class, new Listener<RRSRecipeAddEvent>() {
-			@Override
-			public void onEvent(RRSRecipeAddEvent event) {
-				registerRecipes();
-			}
-		}, instance);
-	}
-
-	private static void registerRecipes() {
+	public static void registerRecipes() {
 		try {
 			registerPipeRecipes();
 			registerHeliogenRecipes();
@@ -80,10 +69,6 @@ public class RecipeManager {
 		// Heliogen Refinery — heat-intensive compression of raw plasma into canisters.
 		// Thermyn Power Charge drives the high-energy compression process.
 		RRSRecipeManager.addBlock(ElementRegistry.HELIOGEN_REFINERY.getInfo(), comp(2, "Metal Frame"), comp(1, "Metal Sheet"), comp(1, "Thermyn Power Charge"), comp(1, "Standard Circuitry"));
-
-		// Heliogen Refinery Controller — the computer block of the refinery multiblock.
-		// Mirrors RRS weapon computer cost: Metal Frames + Sheets + logic + optics.
-		RRSRecipeManager.addBlock(ElementRegistry.HELIOGEN_REFINERY_CONTROLLER.getInfo(), comp(1, "Metal Frame"), comp(6, "Metal Sheet"), comp(1, "Standard Circuitry"), comp(1, "Crystal Panel"));
 	}
 }
 

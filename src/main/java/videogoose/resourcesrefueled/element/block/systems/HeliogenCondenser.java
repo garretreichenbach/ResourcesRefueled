@@ -26,7 +26,7 @@ public class HeliogenCondenser extends Block {
 	public void initData() {
 		ElementInformation vanillaFactory = ElementKeyMap.getInfo(ElementKeyMap.FACTORY_BASIC_ID);
 		// Reuse vanilla factory textures as a placeholder until custom art is added.
-		blockInfo = BlockConfig.newFactory(ResourcesRefueled.getInstance(), "Heliogen Condenser", vanillaFactory.getTextureIds());
+		blockInfo = BlockConfig.registerFactory(ResourcesRefueled.getInstance(), name, vanillaFactory.getTextureIds());
 		blockInfo.description = "A station-mounted condenser that uses stellar radiation to catalyze a reaction between Anbaric Vapor and Parsyne Plasma, producing raw Heliogen Plasma.\nYield increases the closer the station is to its local star.\nConnect Factory Enhancers to boost throughput.";
 		blockInfo.price = vanillaFactory.price;
 		blockInfo.mass = vanillaFactory.mass;
@@ -35,7 +35,7 @@ public class HeliogenCondenser extends Block {
 		blockInfo.shoppable = true;
 		blockInfo.canActivate = true;
 		blockInfo.type = vanillaFactory.type;
-		BlockConfig.setRestrictedBlock(blockInfo, true); // Station/planet only
+		BlockConfig.setRestrictedBlock(blockInfo, true);
 	}
 
 	@Override
@@ -46,8 +46,8 @@ public class HeliogenCondenser extends Block {
 		try {
 			short anbaricId = RRSElementInfoManager.elementEntries.get("Anbaric Vapor").id;
 			short parsyneId = RRSElementInfoManager.elementEntries.get("Parsyne Plasma").id;
-			short heliogenId = ElementRegistry.HELIOGEN_PLASMA.getId();
-			BlockConfig.addRecipe(ElementKeyMap.getInfo(heliogenId), BlockConfig.customFactories.get(blockInfo.id), 20, // bake time in ticks
+
+			BlockConfig.addRecipe(ElementRegistry.HELIOGEN_PLASMA.getInfo(), BlockConfig.customFactories.get(blockInfo.id), 20, // bake time in ticks
 					new FactoryResource(1, anbaricId), new FactoryResource(1, parsyneId));
 		} catch(Exception e) {
 			ResourcesRefueled.getInstance().logException("[ResourcesRefueled] Failed to register Heliogen Condenser recipe", e);

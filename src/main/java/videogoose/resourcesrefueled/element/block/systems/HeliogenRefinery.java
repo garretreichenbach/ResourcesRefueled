@@ -32,7 +32,7 @@ public class HeliogenRefinery extends Block {
 	@Override
 	public void initData() {
 		ElementInformation vanillaFactory = ElementKeyMap.getInfo(ElementKeyMap.FACTORY_BASIC_ID);
-		blockInfo = BlockConfig.newRefinery(ResourcesRefueled.getInstance(), "Heliogen Refinery", vanillaFactory.getTextureIds(), new CustomModRefinery(condensingRecipe, "Heliogen Refinery", "Condensing Heliogen Plasma...", BAKE_TIME));
+		blockInfo = BlockConfig.registerRefinery(ResourcesRefueled.getInstance(), name, vanillaFactory.getTextureIds(), new CustomModRefinery(condensingRecipe, "Heliogen Refinery", "Condensing Heliogen Plasma...", BAKE_TIME));
 		blockInfo.description = "A refinery that compresses raw Heliogen Plasma into portable Heliogen Canisters. " + "Produces " + PLASMA_PER_CANISTER + " filled canisters per unit of plasma input. " + "Also accepts empty canisters as an additional input to fill them directly.";
 		blockInfo.price = vanillaFactory.price;
 		blockInfo.mass = vanillaFactory.mass;
@@ -41,7 +41,6 @@ public class HeliogenRefinery extends Block {
 		blockInfo.shoppable = true;
 		blockInfo.canActivate = true;
 		blockInfo.type = vanillaFactory.type;
-		BlockConfig.setRestrictedBlock(blockInfo, true);
 	}
 
 	@Override

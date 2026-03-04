@@ -11,7 +11,6 @@ import org.ithirahad.resourcesresourced.events.HarvesterStrengthUpdateEvent;
 import videogoose.resourcesrefueled.ResourcesRefueled;
 import videogoose.resourcesrefueled.element.ElementRegistry;
 import videogoose.resourcesrefueled.fuel.StellarFuelManager;
-import videogoose.resourcesrefueled.industry.RecipeManager;
 import videogoose.resourcesrefueled.listener.HarvesterEnhancerOverrideListener;
 import videogoose.resourcesrefueled.listener.SegmentPieceKillEvent;
 import videogoose.resourcesrefueled.listener.ShipJumpFuelListener;
@@ -23,9 +22,6 @@ public class EventManager {
 	public static SegmentPieceKillEvent killEvent;
 
 	public static void initialize(ResourcesRefueled instance) {
-		// Block assembly recipes (hooks RRSRecipeAddEvent, fired after RRS's own recipe pass)
-		RecipeManager.initialize(instance);
-
 		// Block kill listener (tank explosion handled here)
 		FastListenerCommon.segmentPieceKilledListeners.add(killEvent = new SegmentPieceKillEvent());
 

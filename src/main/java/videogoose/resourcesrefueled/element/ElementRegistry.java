@@ -3,6 +3,7 @@ package videogoose.resourcesrefueled.element;
 import api.common.GameCommon;
 import api.config.BlockConfig;
 import api.utils.element.Blocks;
+import org.schema.game.common.data.element.ElementCategory;
 import org.schema.game.common.data.element.ElementInformation;
 import videogoose.resourcesrefueled.element.block.pipes.FluidFilter;
 import videogoose.resourcesrefueled.element.block.pipes.FluidPipe;
@@ -11,7 +12,6 @@ import videogoose.resourcesrefueled.element.block.pipes.FluidValve;
 import videogoose.resourcesrefueled.element.block.systems.FluidTank;
 import videogoose.resourcesrefueled.element.block.systems.HeliogenCondenser;
 import videogoose.resourcesrefueled.element.block.systems.HeliogenRefinery;
-import videogoose.resourcesrefueled.element.block.systems.HeliogenRefineryController;
 import videogoose.resourcesrefueled.element.item.HeliogenCanisterEmpty;
 import videogoose.resourcesrefueled.element.item.HeliogenCanisterFilled;
 import videogoose.resourcesrefueled.element.item.HeliogenPlasma;
@@ -35,8 +35,9 @@ public enum ElementRegistry {
 
 	//Heliogen production blocks
 	HELIOGEN_CONDENSER(new HeliogenCondenser()),
-	HELIOGEN_REFINERY(new HeliogenRefinery()),
-	HELIOGEN_REFINERY_CONTROLLER(new HeliogenRefineryController());
+	HELIOGEN_REFINERY(new HeliogenRefinery());
+
+	public static ElementCategory pipesCategory;
 
 	public final ElementInterface elementInterface;
 
@@ -45,6 +46,8 @@ public enum ElementRegistry {
 	}
 
 	public static void registerElements() {
+		pipesCategory = BlockConfig.newElementCategory(Blocks.FACTORY_MANAGER.getInfo().type, "Pipes");
+
 		for(ElementRegistry registry : values()) {
 			registry.elementInterface.initData();
 		}

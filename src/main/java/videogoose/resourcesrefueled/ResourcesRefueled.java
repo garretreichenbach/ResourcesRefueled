@@ -6,6 +6,7 @@ import api.mod.StarMod;
 import org.schema.schine.resource.ResourceLoader;
 import videogoose.resourcesrefueled.element.ElementRegistry;
 import videogoose.resourcesrefueled.fuel.StellarFuelManager;
+import videogoose.resourcesrefueled.industry.RecipeManager;
 import videogoose.resourcesrefueled.manager.ConfigManager;
 import videogoose.resourcesrefueled.manager.EventManager;
 import videogoose.resourcesrefueled.manager.ResourceManager;
@@ -44,6 +45,7 @@ public final class ResourcesRefueled extends StarMod {
 		try {
 			ElementRegistry.registerElements();
 			ElementRegistry.doOverwrites();
+			RecipeManager.registerRecipes();
 			logInfo("Elements registered successfully");
 		} catch(Exception e) {
 			logException("[ResourcesRefueled] Failed to register elements — mod may not function correctly", e);

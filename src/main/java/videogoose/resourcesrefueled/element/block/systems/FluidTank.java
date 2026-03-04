@@ -76,7 +76,7 @@ public class FluidTank extends Block {
 	@Override
 	public void initData() {
 		ElementInformation vanillaFactory = ElementKeyMap.getInfo(ElementKeyMap.FACTORY_BASIC_ID);
-		blockInfo = BlockConfig.newElement(ResourcesRefueled.getInstance(), name, vanillaFactory.getTextureIds());
+		blockInfo = BlockConfig.newElement(ResourcesRefueled.getInstance(), name, new short[] {0, 0, 0, 0, 0, 0});
 		blockInfo.description = buildDescription();
 		blockInfo.price = (int) (vanillaFactory.price * 2);
 		blockInfo.mass = vanillaFactory.mass * 1.5f;
@@ -87,6 +87,7 @@ public class FluidTank extends Block {
 		blockInfo.systemBlock = true;
 		blockInfo.type = vanillaFactory.type;
 	}
+
 
 	@Override
 	public void postInitData() {
