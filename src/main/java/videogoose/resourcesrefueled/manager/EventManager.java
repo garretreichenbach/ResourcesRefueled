@@ -7,12 +7,10 @@ import api.listener.events.register.ManagerContainerRegisterEvent;
 import api.listener.events.world.WorldSaveEvent;
 import api.listener.fastevents.FastListenerCommon;
 import api.mod.StarLoader;
-import org.ithirahad.resourcesresourced.events.HarvesterStrengthUpdateEvent;
 import videogoose.resourcesrefueled.ResourcesRefueled;
 import videogoose.resourcesrefueled.element.ElementRegistry;
 import videogoose.resourcesrefueled.fuel.StellarFuelManager;
 import videogoose.resourcesrefueled.industry.RecipeManager;
-import videogoose.resourcesrefueled.listener.HarvesterFuelEfficiencyListener;
 import videogoose.resourcesrefueled.listener.SegmentPieceKillEvent;
 import videogoose.resourcesrefueled.listener.ShipJumpFuelListener;
 import videogoose.resourcesrefueled.listener.SolarCondenserTickListener;
@@ -40,8 +38,6 @@ public class EventManager {
 			}
 		}, instance);
 
-		// Heliogen fuel efficiency penalty for unfueled extractors
-		StarLoader.registerListener(HarvesterStrengthUpdateEvent.class, new HarvesterFuelEfficiencyListener(), instance);
 
 		// Load Heliogen persistence on server start
 		StarLoader.registerListener(ServerInitializeEvent.class, new Listener<ServerInitializeEvent>() {

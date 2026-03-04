@@ -29,14 +29,12 @@ Passive Heliogen supply tied to star proximity, no zone maps required.
 
 ---
 
-### 3. ✅ Extractor fuel consumption mixin
-Intercepts RRS's `ExtractorTickFastListener.onPreManufacture`.
+### 3. ✅ Extractor fuel boost (mixin)
+Intercepts RRS's `ExtractorTickFastListener.onProduceItem`.
 
-- ✅ `MixinExtractorTickListener` — two injection points: `onPreManufacture` checks fuel availability and sets `FuelTickState`; `onProduceItem` consumes canisters once per completed extraction cycle (proportional to output quantity) and returns empties
-- ✅ `FuelTickState` — external holder for the per-tick unfueled flag (required because Mixin disallows non-private static members)
-- ✅ `HarvesterFuelEfficiencyListener` — reads `FuelTickState`, scales extraction power by `unfueled_extraction_efficiency` via `HarvesterStrengthUpdateEvent`
+- ✅ `MixinExtractorTickListener` — single `onProduceItem` inject; if filled canisters are present, consumes them and adds bonus resources proportional to `fueled_extraction_bonus` config. Extractors always run at full base efficiency without fuel — Heliogen is a reward, not a gate.
 - ✅ Registered in `resourcesrefueled.mixins.json`
-- ✅ Void-system behaviour: no special handling needed in this mixin — RRS gates void extraction output; Condenser void block is in `SolarCondenserTickListener`
+- ✅ `FuelTickState` and `HarvesterFuelEfficiencyListener` removed — no longer needed
 
 ---
 

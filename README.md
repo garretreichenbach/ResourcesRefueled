@@ -49,9 +49,9 @@ Star radiation
 ## Fuel Consumption
 
 ### Resource Extractors
-RRS's Vapor Siphons and Magmatic Extractors now consume Heliogen fuel each extraction cycle. Fueled extractors operate at full efficiency. Unfueled extractors still work, but at a fraction of normal output (configurable, default 30%). Fuel is consumed once per completed cycle — the stronger or more enhanced the extractor, the more it produces per cycle and the more fuel it burns. Spent canisters are returned as empty canisters in the same inventory update, ready to be transported back to a refinery for refilling.
+RRS's Vapor Siphons and Magmatic Extractors always run at full base efficiency — Heliogen is not required to operate them. However, if filled Heliogen Canisters are present in the extractor's linked inventory, each completed extraction cycle will consume some and produce bonus resources on top of the base output (configurable, default +50% per canister consumed). Spent canisters are returned as empties in the same inventory update, ready to be transported back to a refinery.
 
-This creates a deliberate supply chain: Heliogen is produced at condenser stations near stars, refined into canisters, and physically transported to extraction sites. Automating that transport is left to the player.
+This makes Heliogen a worthwhile investment for established operations without punishing players who haven't built a fuel supply chain yet.
 
 ### FTL Jumps
 FTL drives consume Heliogen proportional to jump distance. The fuel priority order is:
@@ -93,7 +93,7 @@ All values are set in `config/ResourcesRefueled/config.yml` on the server.
 | Key | Default | Description |
 |---|---|---|
 | `fuel_cost_per_strength_unit` | `0.5` | Canisters consumed per unit of extractor strength per tick |
-| `unfueled_extraction_efficiency` | `0.3` | Extraction rate multiplier when running without fuel |
+| `fueled_extraction_bonus` | `0.5` | Bonus output fraction added per canister consumed when extractors are fueled |
 | `ftl_fuel_per_sector` | `1.0` | Canisters consumed per sector of jump distance |
 | `fuel_per_canister` | `100.0` | Fluid units represented by one filled canister when drawing from a tank |
 | `ftl_unfueled_cooldown_multiplier` | `3.0` | FTL cooldown multiplier for underfueled jumps |
