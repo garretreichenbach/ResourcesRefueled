@@ -9,7 +9,6 @@ import api.listener.fastevents.FastListenerCommon;
 import api.mod.StarLoader;
 import org.ithirahad.resourcesresourced.events.HarvesterStrengthUpdateEvent;
 import videogoose.resourcesrefueled.ResourcesRefueled;
-import videogoose.resourcesrefueled.element.ElementRegistry;
 import videogoose.resourcesrefueled.fuel.EntityFuelManager;
 import videogoose.resourcesrefueled.fuel.StellarFuelManager;
 import videogoose.resourcesrefueled.listener.HarvesterEnhancerOverrideListener;
@@ -36,7 +35,7 @@ public class EventManager {
 
 			@Override
 			public void onEvent(ManagerContainerRegisterEvent event) {
-				FluidTankSystemModule tankModule = new FluidTankSystemModule(event.getSegmentController(), event.getContainer(), ElementRegistry.FLUID_TANK.getId(), ElementRegistry.HELIOGEN_PLASMA.getId());
+				FluidTankSystemModule tankModule = new FluidTankSystemModule(event.getSegmentController(), event.getContainer());
 				event.addModMCModule(tankModule);
 
 				// Sync the virtualised fuel cache from the live entity state now that it's loaded.

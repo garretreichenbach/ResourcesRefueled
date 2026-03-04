@@ -110,14 +110,31 @@ All values are set in `config/ResourcesRefueled/config.yml` on the server.
 - **Heliogen supply** is tracked per star system in `StellarFuelSupplier`, keyed by system `Vector3i`. Suppliers are created lazily on first access — no galaxy-gen hook required. Works on pre-existing worlds.
 - **Extractor fuel** is resolved once per tick in `MixinExtractorTickListener.onPreManufacture`, combining `FluidTankSystemModule` level and inventory canister count into a single `FuelTickState.availableFuelUnits` value. Both the strength override listener and `onProduceItem` read from this — no inventory access after `onPreManufacture`.
 - **Enhancer disconnect** — `ElementRegistry.doOverwrites()` removes `FACTORY_ENHANCER` from the `controlling`/`controlledBy` lists of Vapor Siphon and Magmatic Extractor at block config load time. Enhancers still define the extraction ceiling; Heliogen fuel is what drives output toward it.
-- **Fluid tanks** use the `FluidTank` generic block class. Adding a new fluid type requires only a new `ElementRegistry` entry with a different `fluidIdSupplier` — the tank block, module, explosion logic, and pipe routing all work generically.
-- **Persistence** mirrors RRS's `PersistentObjectUtil` pattern exactly: load on `ServerInitializeEvent`, save on `WorldSaveEvent` and `onDisable`.
+- **Fluid tanks** use the `FluidTank` generic block class. Adding a new fluid type requires only a new `ElementRegistry`
+  entry — the tank module, explosion logic, and future pipe routing all work generically.
+- **Virtualised entity fuel cache** — `EntityFuelManager` keeps a persistent `EntityFuelCache` per entity (keyed by UID)
+  so that fuel reads and drains are valid even when the entity is not loaded. `syncFromLive` snapshots the live entity
+  into the cache; `writeBackToLive` flushes consumed fuel back to the actual tank and inventory using a canister-count
+  delta to avoid unnecessary item scanning.
+- **Persistence** mirrors RRS's `PersistentObjectUtil` pattern exactly for both stellar supply (`StellarFuelManager`)
+  and entity fuel caches (`EntityFuelManager`): load on `ServerInitializeEvent`, save on `WorldSaveEvent` and
+  `onDisable`.
+- **Upcoming — pipe-network topology** — `FluidTankSystemModule` will be refactored to replace the inherited `blocks`
+  array with two explicit maps: `tankSegments` (one entry per placed `FLUID_TANK` block, drives capacity) and
+  `pipeSegments` (one entry per placed pipe-network block). `onBlockPlaced`/`onBlockRemoved` hooks will maintain both
+  maps and trigger structural capacity recalculation. See TODO §8 for the full task breakdown.
 
 ---
 
 ## Planned
 
-- Pipe network fluid transport logic
+- **Fluid pipe-network refactor** — replace `FluidTankSystemModule.blocks` with `tankSegments` / `pipeSegments` maps;
+  structural capacity derived from block count; `onBlockPlaced` / `onBlockRemoved` hooks maintain topology (TODO
+  §8.1–8.7)
+- **Pipe transport logic** — directional `FluidPump` flow, `FluidValve` gating, `FluidFilter` whitelist enforcement (
+  TODO §8.8)
 - Per-fluid dynamic tank textures
 - Custom textures and icons for all blocks and items
+
+
 

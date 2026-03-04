@@ -21,12 +21,17 @@ public class SegmentPieceKillEvent implements SegmentPieceKilledListener {
 
 	@Override
 	public void onBlockKilled(SegmentPiece segmentPiece, SendableSegmentController sendableSegmentController, @Nullable Damager damager, boolean b) {
-		if(segmentPiece.getType() == ElementRegistry.FLUID_TANK.getId()) {
-			if(sendableSegmentController instanceof ManagedUsableSegmentController<?>) {
-				ManagedUsableSegmentController<?> managed = (ManagedUsableSegmentController<?>) sendableSegmentController;
-				ManagerContainer<?> managerContainer = managed.getManagerContainer();
-				if(managerContainer.getModMCModule(segmentPiece.getType()) instanceof FluidTankSystemModule) {
-					FluidTankSystemModule tankModule = (FluidTankSystemModule) managerContainer.getModMCModule(segmentPiece.getType());
+		short type = segmentPiece.getType();
+		boolean isTankOrPipe = type == ElementRegistry.FLUID_TANK.getId() || ElementRegistry.isPipe(type);
+		if(!isTankOrPipe) return;
+
+		if(sendableSegmentController instanceof ManagedUsableSegmentController<?>) {
+			ManagedUsableSegmentController<?> managed = (ManagedUsableSegmentController<?>) sendableSegmentController;
+			ManagerContainer<?> managerContainer = managed.getManagerContainer();
+			if(managerContainer.getModMCModule(ElementRegistry.FLUID_TANK.getId()) instanceof FluidTankSystemModule) {
+				FluidTankSystemModule tankModule = (FluidTankSystemModule) managerContainer.getModMCModule(ElementRegistry.FLUID_TANK.getId());
+				// Only explode if tank blocks are actually present and fluid is stored.
+				if(tankModule.getCurrentFluidLevel() > 0 && !tankModule.getBlockIndices().isEmpty()) {
 					List<ModuleExplosion> explosionList = createExplosionList(segmentPiece, tankModule);
 					for(ModuleExplosion explosion : explosionList) {
 						managerContainer.addModuleExplosions(explosion);

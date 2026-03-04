@@ -3,7 +3,6 @@ package videogoose.resourcesrefueled.element;
 import api.common.GameCommon;
 import api.config.BlockConfig;
 import api.utils.element.Blocks;
-import org.schema.game.common.data.element.ElementCategory;
 import org.schema.game.common.data.element.ElementInformation;
 import videogoose.resourcesrefueled.element.block.pipes.FluidFilter;
 import videogoose.resourcesrefueled.element.block.pipes.FluidPipe;
@@ -79,6 +78,10 @@ public enum ElementRegistry {
 			}
 		}
 		throw new IllegalStateException("Element with name '" + name + "' not found");
+	}
+
+	public static boolean isPipe(short id) {
+		return id == FLUID_PIPE.getId() || id == FLUID_VALVE.getId() || id == FLUID_FILTER.getId() || id == FLUID_PUMP.getId();
 	}
 
 	public ElementInformation getInfo() {
