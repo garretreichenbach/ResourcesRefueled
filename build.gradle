@@ -19,11 +19,7 @@ repositories {
 dependencies {
 	compileOnly(files(starmadeDirectory + "StarMade.jar"))
 	compileOnly(fileTree(dir: (starmadeDirectory + "lib"), include: "*.jar"))
-	implementation(fileTree(dir: 'lib', include: '*.jar'))
-
-	implementation 'com.github.oshi:oshi-core:6.6.4'
-	implementation 'net.java.dev.jna:jna:5.14.0'
-	implementation 'net.java.dev.jna:jna-platform:5.14.0'
+	compileOnly(fileTree(dir: 'lib', include: '*.jar'))
 
 	compileOnly 'org.spongepowered:mixin:0.8.7'
 	annotationProcessor 'org.spongepowered:mixin:0.8.7:processor'
