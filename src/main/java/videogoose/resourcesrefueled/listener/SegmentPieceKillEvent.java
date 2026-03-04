@@ -21,7 +21,7 @@ public class SegmentPieceKillEvent implements SegmentPieceKilledListener {
 
 	@Override
 	public void onBlockKilled(SegmentPiece segmentPiece, SendableSegmentController sendableSegmentController, @Nullable Damager damager, boolean b) {
-		if(ElementRegistry.isFluidTank(segmentPiece.getType())) {
+		if(segmentPiece.getType() == ElementRegistry.FLUID_TANK.getId()) {
 			if(sendableSegmentController instanceof ManagedUsableSegmentController<?>) {
 				ManagedUsableSegmentController<?> managed = (ManagedUsableSegmentController<?>) sendableSegmentController;
 				ManagerContainer<?> managerContainer = managed.getManagerContainer();

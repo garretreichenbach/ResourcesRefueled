@@ -59,7 +59,7 @@ public class RecipeManager {
 		// Heliogen Tank — pressurised vessel for volatile plasma.
 		// Anbaric Distortion Coils provide the exotic containment field that
 		// keeps compressed Heliogen stable.
-		RRSRecipeManager.addBlock(ElementRegistry.HELIOGEN_TANK.getInfo(), comp(2, "Metal Frame"), comp(6, "Metal Sheet"), comp(2, "Anbaric Distortion Coil"));
+		RRSRecipeManager.addBlock(ElementRegistry.FLUID_TANK.getInfo(), comp(2, "Metal Frame"), comp(6, "Metal Sheet"), comp(2, "Anbaric Distortion Coil"));
 
 		// Heliogen Condenser — converts stellar radiation into raw plasma.
 		// Parsyne Focus captures the stellar energy; Anbaric Coil initiates the

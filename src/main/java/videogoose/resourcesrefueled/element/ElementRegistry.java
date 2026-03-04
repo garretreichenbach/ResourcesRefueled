@@ -31,7 +31,7 @@ public enum ElementRegistry {
 	FLUID_FILTER(new FluidFilter()),
 	FLUID_PUMP(new FluidPump()),
 
-	HELIOGEN_TANK(new FluidTank("Heliogen Tank", HELIOGEN_CANISTER_FILLED::getId, 50, true)),
+	FLUID_TANK(new FluidTank()),
 
 	//Heliogen production blocks
 	HELIOGEN_CONDENSER(new HeliogenCondenser()),
@@ -65,10 +65,6 @@ public enum ElementRegistry {
 		for(ElementRegistry registry : values()) {
 			BlockConfig.add(registry.getInfo());
 		}
-	}
-
-	public static boolean isFluidTank(short type) {
-		return type == HELIOGEN_TANK.getId();
 	}
 
 	public static void doOverwrites() {

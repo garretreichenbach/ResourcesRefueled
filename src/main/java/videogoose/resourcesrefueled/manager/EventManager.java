@@ -35,7 +35,7 @@ public class EventManager {
 
 			@Override
 			public void onEvent(ManagerContainerRegisterEvent event) {
-				event.addModMCModule(new FluidTankSystemModule(event.getSegmentController(), event.getContainer(), ElementRegistry.HELIOGEN_TANK.getId(), ElementRegistry.HELIOGEN_PLASMA.getId()));
+				event.addModMCModule(new FluidTankSystemModule(event.getSegmentController(), event.getContainer(), ElementRegistry.FLUID_TANK.getId(), ElementRegistry.HELIOGEN_PLASMA.getId()));
 			}
 		}, instance);
 

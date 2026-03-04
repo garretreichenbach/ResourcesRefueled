@@ -37,7 +37,7 @@ public class ShipJumpFuelListener extends Listener<ShipJumpEngageEvent> {
 		if(canistersNeeded <= 0) return;
 
 		ShipManagerContainer shipManagerContainer = ((Ship) event.getController()).getManagerContainer();
-		FluidTankSystemModule tankModule = (FluidTankSystemModule) shipManagerContainer.getModMCModule(ElementRegistry.HELIOGEN_TANK.getId());
+		FluidTankSystemModule tankModule = (FluidTankSystemModule) shipManagerContainer.getModMCModule(ElementRegistry.FLUID_TANK.getId());
 
 		if(tankModule == null) {
 			// No tanks installed — fall back to inventory canisters with a warning.
