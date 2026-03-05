@@ -29,7 +29,6 @@ public final class ResourcesRefueled extends StarMod {
 		ConfigManager.initialize(this);
 		EventManager.initialize(this);
 		registerCommands();
-		registerPackets();
 	}
 
 	@Override
@@ -47,6 +46,7 @@ public final class ResourcesRefueled extends StarMod {
 	public void onBlockConfigLoad(BlockConfig config) {
 		logInfo("Registering elements...");
 		try {
+			ElementRegistry.registerRRSBlocks();
 			ElementRegistry.registerElements();
 			ElementRegistry.doOverwrites();
 			RecipeManager.registerRecipes();
@@ -65,7 +65,9 @@ public final class ResourcesRefueled extends StarMod {
 
 	}
 
-	private void registerPackets() {
-
+	public void logDebug(String message) {
+		if(ConfigManager.isDebugMode()) {
+			logInfo("[DEBUG] " + message);
+		}
 	}
 }

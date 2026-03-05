@@ -4,10 +4,10 @@ import api.common.GameCommon;
 import api.config.BlockConfig;
 import api.utils.element.Blocks;
 import org.schema.game.common.data.element.ElementInformation;
-import videogoose.resourcesrefueled.element.block.pipes.FluidFilter;
-import videogoose.resourcesrefueled.element.block.pipes.FluidPipe;
-import videogoose.resourcesrefueled.element.block.pipes.FluidPump;
-import videogoose.resourcesrefueled.element.block.pipes.FluidValve;
+import videogoose.resourcesrefueled.ResourcesRefueled;
+import videogoose.resourcesrefueled.element.block.pipes.PipeFilter;
+import videogoose.resourcesrefueled.element.block.pipes.PipePump;
+import videogoose.resourcesrefueled.element.block.pipes.PipeValve;
 import videogoose.resourcesrefueled.element.block.systems.FluidTank;
 import videogoose.resourcesrefueled.element.block.systems.HeliogenCondenser;
 import videogoose.resourcesrefueled.element.block.systems.HeliogenRefinery;
@@ -25,16 +25,17 @@ public enum ElementRegistry {
 	HELIOGEN_CANISTER_FILLED(new HeliogenCanisterFilled()),
 
 	//Pipe network blocks
-	FLUID_PIPE(new FluidPipe()),
-	FLUID_VALVE(new FluidValve()),
-	FLUID_FILTER(new FluidFilter()),
-	FLUID_PUMP(new FluidPump()),
+	PIPE_VALVE(new PipeValve()),
+	PIPE_FILTER(new PipeFilter()),
+	PIPE_PUMP(new PipePump()),
 	FLUID_TANK(new FluidTank()),
 
 	//Heliogen production blocks
 	HELIOGEN_CONDENSER(new HeliogenCondenser()),
 	HELIOGEN_REFINERY(new HeliogenRefinery());
 
+	public static ElementInformation MAGMATIC_EXTRACTOR;
+	public static ElementInformation VAPOR_SIPHON;
 	public final ElementInterface elementInterface;
 
 	ElementRegistry(ElementInterface elementInterface) {
@@ -45,30 +46,34 @@ public enum ElementRegistry {
 		for(ElementRegistry registry : values()) {
 			registry.elementInterface.initData();
 		}
+		ResourcesRefueled.getInstance().logDebug("Initialized element data for " + values().length + " elements");
 
 		for(ElementRegistry registry : values()) {
 			registry.elementInterface.postInitData();
 		}
+		ResourcesRefueled.getInstance().logDebug("Initialized element data for " + values().length + " elements");
 
 		for(ElementRegistry registry : values()) {
 			if(!GameCommon.isDedicatedServer()) {
 				registry.elementInterface.initResources();
 			}
 		}
+		if(!GameCommon.isDedicatedServer()) {
+			ResourcesRefueled.getInstance().logDebug("Initialized element resources for " + values().length + " elements");
+		}
 
 		for(ElementRegistry registry : values()) {
 			BlockConfig.add(registry.getInfo());
 		}
+		ResourcesRefueled.getInstance().logDebug("Initialized element resources for " + values().length + " elements");
 	}
 
 	public static void doOverwrites() {
-		ElementInformation extractor = getInfoByName("Magmatic Extractor");
-		extractor.controlling.remove(Blocks.FACTORY_ENHANCER.getId());
-		Blocks.FACTORY_ENHANCER.getInfo().controlledBy.remove(extractor.id);
+		MAGMATIC_EXTRACTOR.controlling.remove(Blocks.FACTORY_ENHANCER.getId());
+		Blocks.FACTORY_ENHANCER.getInfo().controlledBy.remove(MAGMATIC_EXTRACTOR.id);
 
-		ElementInformation siphon = getInfoByName("Vapor Siphon");
-		siphon.controlling.remove(Blocks.FACTORY_ENHANCER.getId());
-		Blocks.FACTORY_ENHANCER.getInfo().controlledBy.remove(siphon.id);
+		VAPOR_SIPHON.controlling.remove(Blocks.FACTORY_ENHANCER.getId());
+		Blocks.FACTORY_ENHANCER.getInfo().controlledBy.remove(VAPOR_SIPHON.id);
 	}
 
 	private static ElementInformation getInfoByName(String name) {
@@ -81,7 +86,16 @@ public enum ElementRegistry {
 	}
 
 	public static boolean isPipe(short id) {
-		return id == FLUID_PIPE.getId() || id == FLUID_VALVE.getId() || id == FLUID_FILTER.getId() || id == FLUID_PUMP.getId();
+		return id == Blocks.PIPE.getId() || id == Blocks.PIPE_CROSS.getId() || id == Blocks.PIPE_TEE.getId() || id == Blocks.PIPE_ELBOW.getId() || id == PIPE_VALVE.getId() || id == PIPE_FILTER.getId() || id == PIPE_PUMP.getId();
+	}
+
+	public static boolean canInteractWithFluid(short id) {
+		return isPipe(id) || id == FLUID_TANK.getId() || id == HELIOGEN_CONDENSER.getId() || id == HELIOGEN_REFINERY.getId();
+	}
+
+	public static void registerRRSBlocks() {
+		MAGMATIC_EXTRACTOR = getInfoByName("Magmatic Extractor");
+		VAPOR_SIPHON = getInfoByName("Vapor Siphon");
 	}
 
 	public ElementInformation getInfo() {

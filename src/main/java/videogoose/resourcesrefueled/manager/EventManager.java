@@ -34,7 +34,7 @@ public class EventManager {
 
 			@Override
 			public void onEvent(ManagerContainerRegisterEvent event) {
-				FluidTankSystemModule tankModule = new FluidTankSystemModule(event.getSegmentController(), event.getContainer());
+				FluidTankSystemModule tankModule = new FluidTankSystemModule(event.getContainer());
 				event.addModMCModule(tankModule);
 
 				// Sync the virtualised fuel cache from the live entity state now that it's loaded.

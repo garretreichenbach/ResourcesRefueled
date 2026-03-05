@@ -7,6 +7,8 @@ import it.unimi.dsi.fastutil.longs.LongArrayList;
 import org.schema.common.util.linAlg.Vector3i;
 import org.schema.game.common.controller.SegmentController;
 import org.schema.game.common.controller.elements.ManagerContainer;
+import org.schema.game.common.data.SegmentPiece;
+import org.schema.game.common.data.element.Element;
 import org.schema.game.common.data.element.ElementCollection;
 import org.schema.schine.graphicsengine.core.Timer;
 import org.schema.schine.graphicsengine.forms.BoundingBox;
@@ -56,11 +58,13 @@ public class FluidTankSystemModule extends SystemModule {
 	// =========================================================================
 	// Fields
 	// =========================================================================
+	private final SegmentController segmentController;
 	/** The fluid type this module accepts (e.g. HELIOGEN_CANISTER_FILLED). */
 	private short fluidId;
 
-	public FluidTankSystemModule(SegmentController entity, ManagerContainer<?> managerContainer) {
-		super(entity, managerContainer, ResourcesRefueled.getInstance(), ElementRegistry.FLUID_TANK.getId());
+	public FluidTankSystemModule(ManagerContainer<?> managerContainer) {
+		super(managerContainer.getSegmentController(), managerContainer, ResourcesRefueled.getInstance(), ElementRegistry.FLUID_TANK.getId());
+		segmentController = managerContainer.getSegmentController();
 		fluidId = ElementRegistry.HELIOGEN_CANISTER_FILLED.getId();
 	}
 
@@ -121,6 +125,14 @@ public class FluidTankSystemModule extends SystemModule {
 		if(blockType == ElementRegistry.FLUID_TANK.getId()) {
 			tankSegments.put(index, new FluidTankSegment(index, blockType));
 		} else if(ElementRegistry.isPipe(blockType)) {
+			// If this is a plain/vanilla pipe piece and it is not connected to any functional
+			// component (tank, pump/valve/filter) or an existing network with capacity, treat
+			// it as decorative and don't allocate memory for it.
+			boolean isFunctional = shouldTreatAsFunctionalPipe(index, blockType);
+			if(!isFunctional) {
+				// Decorative pipe — ignore
+				return;
+			}
 			pipeSegments.put(index, new FluidPipeSegment(index, blockType));
 		} else {
 			return; // not a fluid-network block
@@ -155,6 +167,70 @@ public class FluidTankSystemModule extends SystemModule {
 		if(ConfigManager.isDebugMode()) {
 			ResourcesRefueled.getInstance().logInfo("[FluidNetwork] Placed " + blockType + " @ " + index + " — networks: " + networks.size() + ", merged capacity: " + merged.tankCapacity);
 		}
+	}
+
+	/**
+	 * Heuristic that determines whether a placed pipe should be treated as part of
+	 * the functional fluid network, or ignored as decorative.
+	 * <p>
+	 * Current rules (conservative):
+	 * - Any mod pipe-type that has behaviour (pump/valve/filter) is always considered functional.
+	 * - A pipe is functional if any face-adjacent neighbour is a tank block tracked by this module.
+	 * - A pipe is functional if any face-adjacent neighbour is a tracked pipe block that itself
+	 *   belongs to an existing network which has non-zero capacity (i.e. connected to tanks), or
+	 *   if that neighbour is a mod functional pipe (pump/valve/filter).
+	 * <p>
+	 * This avoids creating in-memory networks for isolated vanilla pipe decorations while
+	 * still picking up pipes that are connected to actual fluid storage or devices.
+	 */
+	private boolean shouldTreatAsFunctionalPipe(long index, short blockType) {
+		// Always treat our own functional devices as real.
+		short valveId = ElementRegistry.PIPE_VALVE.getId();
+		short pumpId = ElementRegistry.PIPE_PUMP.getId();
+		short filterId = ElementRegistry.PIPE_FILTER.getId();
+		if(blockType == valveId || blockType == pumpId || blockType == filterId) {
+			return true;
+		}
+
+		Set<Long> neighbours = faceAdjacentIndices(index);
+		for(long nb : neighbours) {
+			// Adjacent tank -> functional
+			if(tankSegments.containsKey(nb)) {
+				return true;
+			}
+
+			// Adjacent tracked pipe that is a functional device -> functional
+			FluidPipeSegment seg = pipeSegments.get(nb);
+			if(seg != null) {
+				if(seg.blockType == valveId || seg.blockType == pumpId || seg.blockType == filterId) {
+					return true;
+				}
+			}
+
+			// If neighbour is part of an existing network that has capacity, treat as functional
+			for(FluidNetwork net : networks) {
+				if(net.memberIndices.contains(nb)) {
+					if(net.tankCapacity > 0) {
+						return true;
+					}
+					// Also treat as functional if the existing network contains any functional devices
+					for(long member : net.memberIndices) {
+						FluidPipeSegment ps = pipeSegments.get(member);
+						if(ps != null && (ps.blockType == valveId || ps.blockType == pumpId || ps.blockType == filterId)) {
+							return true;
+						}
+					}
+				}
+			}
+
+			// New: check raw world block type for neighbours and treat as functional if
+			// the neighbour can interact with fluids (condenser/refinery or our blocks).
+			SegmentPiece piece = segmentController.getSegmentBuffer().getPointUnsave(nb);
+			if(piece != null && piece.getType() != Element.TYPE_NONE && ElementRegistry.canInteractWithFluid(piece.getType())) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	// =========================================================================

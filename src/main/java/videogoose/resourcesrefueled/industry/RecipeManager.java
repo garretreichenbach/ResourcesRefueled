@@ -38,17 +38,14 @@ public class RecipeManager {
 	// -------------------------------------------------------------------------
 
 	private static void registerPipeRecipes() {
-		// Fluid Pipe — basic conduit, no logic required
-		RRSRecipeManager.addBlock(ElementRegistry.FLUID_PIPE.getInfo(), comp(1, "Metal Frame"), comp(1, "Metal Sheet"));
-
 		// Fluid Valve — mechanically controlled gate
-		RRSRecipeManager.addBlock(ElementRegistry.FLUID_VALVE.getInfo(), comp(1, "Metal Frame"), comp(1, "Metal Sheet"), comp(1, "Standard Circuitry"));
+		RRSRecipeManager.addBlock(ElementRegistry.PIPE_VALVE.getInfo(), comp(1, "Metal Frame"), comp(1, "Metal Sheet"), comp(1, "Standard Circuitry"));
 
 		// Fluid Filter — selective gate, needs processing logic
-		RRSRecipeManager.addBlock(ElementRegistry.FLUID_FILTER.getInfo(), comp(1, "Metal Frame"), comp(1, "Standard Circuitry"), comp(1, "Crystal Panel"));
+		RRSRecipeManager.addBlock(ElementRegistry.PIPE_FILTER.getInfo(), comp(1, "Metal Frame"), comp(1, "Standard Circuitry"), comp(1, "Crystal Panel"));
 
 		// Fluid Pump — active mover, draws power
-		RRSRecipeManager.addBlock(ElementRegistry.FLUID_PUMP.getInfo(), comp(1, "Metal Frame"), comp(1, "Metal Sheet"), comp(1, "Energy Cell"), comp(1, "Standard Circuitry"));
+		RRSRecipeManager.addBlock(ElementRegistry.PIPE_PUMP.getInfo(), comp(1, "Metal Frame"), comp(1, "Metal Sheet"), comp(1, "Energy Cell"), comp(1, "Standard Circuitry"));
 	}
 
 	// -------------------------------------------------------------------------
