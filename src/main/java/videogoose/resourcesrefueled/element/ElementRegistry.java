@@ -90,7 +90,7 @@ public enum ElementRegistry {
 	}
 
 	public static boolean canInteractWithFluid(short id) {
-		return isPipe(id) || id == FLUID_TANK.getId() || id == HELIOGEN_CONDENSER.getId() || id == HELIOGEN_REFINERY.getId();
+		return id == FLUID_TANK.getId() || id == HELIOGEN_CONDENSER.getId() || id == HELIOGEN_REFINERY.getId() || id == MAGMATIC_EXTRACTOR.id || id == VAPOR_SIPHON.id;
 	}
 
 	public static void registerRRSBlocks() {
