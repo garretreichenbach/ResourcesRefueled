@@ -129,11 +129,10 @@ All values are set in `config/ResourcesRefueled/config.yml` on the server.
 ## Planned
 
 - **Fluid pipe-network refactor** — replace `FluidTankSystemModule.blocks` with `tankSegments` / `pipeSegments` maps;
-  structural capacity derived from block count; `onBlockPlaced` / `onBlockRemoved` hooks maintain topology (TODO
-  §8.1–8.7)
-- **Pipe transport logic** — directional `FluidPump` flow, `FluidValve` gating, `FluidFilter` whitelist enforcement (
-  TODO §8.8)
-- Per-fluid dynamic tank textures
+  structural capacity derived from block count; `onBlockPlaced` / `onBlockRemoved` hooks maintain topology (TODO §8.1–8.7)
+- **Pipe transport logic** — directional `FluidPump` flow, `FluidValve` gating, `FluidFilter` whitelist enforcement (TODO §8.8)
+- **Fluid fill visualisation** — per-block world-space fill overlay rendered inside each tank block, scaled to the network's fill fraction (TODO §9)
+- **Tank connected textures** — Fluid Tank faces automatically swap to the correct CTM variant (exposed plate vs. flange/port) based on adjacent tanks and pipe inlets, using StarMade's native `ConnectedTextureUnit` API and a 47-variant sprite sheet (TODO §10). Pipe blocks use 3D mesh models instead.
 - Custom textures and icons for all blocks and items
 
 

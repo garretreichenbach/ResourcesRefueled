@@ -28,6 +28,7 @@ public class FluidPipe extends Block {
 
 	@Override
 	public void initResources() {
-		// TODO: custom pipe textures
+		// Pipe blocks use 3D mesh models for visual connectivity (straight, elbow, T-junction, etc.)
+		// rather than CTM. Model variants and textures go here once assets are ready.
 	}
 }

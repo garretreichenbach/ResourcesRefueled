@@ -40,7 +40,13 @@ public class FluidTank extends Block {
 
 	@Override
 	public void initResources() {
-		// TODO: custom tank textures (sealed metal cylinder aesthetic)
+		// CTM (Connected Texture Method) for tank faces is set up in ResourceManager.loadResources()
+		// using StarLoaderTexture.newCTMRegionFromSheet() + tankRegion.buildHelper(FLUID_TANK.getId()).
+		// This block uses a 47-variant sprite sheet (fluid_tank_ctm47.png) so each face shows the
+		// correct sealed-plate or flange/port tile depending on which neighbours are present.
+		// blockInfo.extendedTexture = true and the base tile index from tankRegion.baseIndex are
+		// applied in initData() once the region is available.
+		// Pipe blocks (FluidPipe etc.) use 3D mesh models and do not need CTM.
 	}
 }
 
