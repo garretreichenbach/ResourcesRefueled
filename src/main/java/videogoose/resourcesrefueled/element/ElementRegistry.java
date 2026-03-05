@@ -93,6 +93,10 @@ public enum ElementRegistry {
 		return id == FLUID_TANK.getId() || id == HELIOGEN_CONDENSER.getId() || id == HELIOGEN_REFINERY.getId() || id == MAGMATIC_EXTRACTOR.id || id == VAPOR_SIPHON.id;
 	}
 
+	public static boolean isFluidTransportPipeInteractable(short id) {
+		return id == PIPE_VALVE.getId() || id == PIPE_FILTER.getId() || id == PIPE_PUMP.getId();
+	}
+
 	public static void registerRRSBlocks() {
 		MAGMATIC_EXTRACTOR = getInfoByName("Magmatic Extractor");
 		VAPOR_SIPHON = getInfoByName("Vapor Siphon");

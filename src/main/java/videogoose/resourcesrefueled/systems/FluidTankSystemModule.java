@@ -106,7 +106,52 @@ public class FluidTankSystemModule extends SystemModule {
 
 	@Override
 	public void handle(Timer timer) {
-		// Future: per-tick pump-driven fluid flow between sub-networks.
+		// Simple pump transfer implementation: for each registered pump segment, try to move
+		// up to configured amount from an adjacent network that has fluid to an adjacent
+		// network that has free capacity. This is intentionally simple and will be expanded
+		// later with orientation/valve/filter behaviour.
+		double pumpRate = ConfigManager.getPumpTransferPerTick();
+		boolean anyChange = false;
+
+		for(FluidPipeSegment seg : pipeSegments.values()) {
+			if(seg.blockType != ElementRegistry.PIPE_PUMP.getId()) continue;
+			long pumpIndex = seg.blockIndex;
+
+			// Find adjacent networks (may be 0, 1 or multiple). We'll collect distinct networks.
+			Set<FluidNetwork> adjacentNets = new LinkedHashSet<>();
+			for(long nb : faceAdjacentIndices(pumpIndex)) {
+				for(FluidNetwork net : networks) {
+					if(net.memberIndices.contains(nb)) {
+						adjacentNets.add(net);
+						break;
+					}
+				}
+			}
+
+			if(adjacentNets.size() < 2) continue; // nothing to pump between
+
+			// Choose a source network (has fluid) and a target network (has capacity).
+			FluidNetwork source = null;
+			FluidNetwork target = null;
+			for(FluidNetwork net : adjacentNets) {
+				if(source == null && net.fluidLevel > 0) source = net;
+				if(target == null && net.tankCapacity > net.fluidLevel) target = net;
+				if(source != null && target != null && source != target) break;
+			}
+			if(source == null || target == null || source == target) continue;
+
+			double transferable = Math.min(pumpRate, Math.min(source.fluidLevel, Math.max(0.0, target.tankCapacity - target.fluidLevel)));
+			if(transferable <= 0) continue;
+
+			source.fluidLevel = Math.max(0.0, source.fluidLevel - transferable);
+			target.fluidLevel = Math.min(target.tankCapacity, target.fluidLevel + transferable);
+			anyChange = true;
+			if(ConfigManager.isDebugMode()) {
+				ResourcesRefueled.getInstance().logInfo("[FluidNetwork] Pump @ " + pumpIndex + " moved " + transferable + " units from net{" + source.memberIndices.size() + "} to net{" + target.memberIndices.size() + "}");
+			}
+		}
+
+		if(anyChange) flagUpdatedData();
 	}
 
 	// =========================================================================
@@ -618,5 +663,50 @@ public class FluidTankSystemModule extends SystemModule {
 		public boolean isEmpty() {
 			return memberIndices.isEmpty();
 		}
+	}
+
+	/**
+	 * Pulls up to {@code amount} fluid units from the network that contains the pump at {@code pumpIndex}.
+	 * <p>
+	 * This is a low-level API used by pump machinery: callers should ensure the pump
+	 * is active/powered and that {@code pumpIndex} refers to a pump block. Returns the
+	 * amount actually extracted (may be less than requested if the network lacks fluid).
+	 */
+	public double pumpExtract(long pumpIndex, double amount) {
+		if(amount <= 0) return 0;
+		FluidPipeSegment seg = pipeSegments.get(pumpIndex);
+		if(seg == null || seg.blockType != ElementRegistry.PIPE_PUMP.getId()) return 0; // not a pump we manage
+
+		for(FluidNetwork net : networks) {
+			if(net.memberIndices.contains(pumpIndex)) {
+				double available = net.fluidLevel;
+				double taken = Math.min(available, amount);
+				net.fluidLevel = Math.max(0.0, net.fluidLevel - taken);
+				flagUpdatedData();
+				return taken;
+			}
+		}
+		return 0;
+	}
+
+	/**
+	 * Inserts up to {@code amount} fluid units into the network that contains the pump at {@code pumpIndex}.
+	 * Returns the amount actually inserted (may be less than requested if the network is full).
+	 */
+	public double pumpInsert(long pumpIndex, double amount) {
+		if(amount <= 0) return 0;
+		FluidPipeSegment seg = pipeSegments.get(pumpIndex);
+		if(seg == null || seg.blockType != ElementRegistry.PIPE_PUMP.getId()) return 0; // not a pump we manage
+
+		for(FluidNetwork net : networks) {
+			if(net.memberIndices.contains(pumpIndex)) {
+				double free = Math.max(0.0, net.tankCapacity - net.fluidLevel);
+				double added = Math.min(free, amount);
+				net.fluidLevel += added;
+				flagUpdatedData();
+				return added;
+			}
+		}
+		return 0;
 	}
 }

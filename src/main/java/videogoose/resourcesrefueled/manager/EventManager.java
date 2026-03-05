@@ -25,6 +25,8 @@ public class EventManager {
 		FastListenerCommon.segmentPieceAddListeners.add(segmentPieceEventHandler);
 		FastListenerCommon.segmentPieceRemoveListeners.add(segmentPieceEventHandler);
 		FastListenerCommon.segmentPieceKilledListeners.add(segmentPieceEventHandler);
+		FastListenerCommon.segmentPieceActivateListeners.add(segmentPieceEventHandler);
+		FastListenerCommon.segmentPiecePlayerInteractListeners.add(segmentPieceEventHandler);
 		FastListenerCommon.factoryManufactureListeners.add(new SolarCondenserTickListener());
 
 		// Replace vanilla enhancer bonus on extractors with Heliogen-fuel-based boost

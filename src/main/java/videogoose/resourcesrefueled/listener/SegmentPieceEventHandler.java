@@ -1,19 +1,21 @@
 package videogoose.resourcesrefueled.listener;
 
-import api.listener.fastevents.segmentpiece.SegmentPieceAddListener;
-import api.listener.fastevents.segmentpiece.SegmentPieceKilledListener;
-import api.listener.fastevents.segmentpiece.SegmentPieceRemoveListener;
+import api.listener.fastevents.segmentpiece.*;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongList;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.schema.game.client.controller.manager.ingame.PlayerInteractionControlManager;
 import org.schema.game.common.controller.ManagedUsableSegmentController;
 import org.schema.game.common.controller.SegmentController;
 import org.schema.game.common.controller.SendableSegmentController;
 import org.schema.game.common.controller.damage.Damager;
 import org.schema.game.common.controller.elements.ManagerContainer;
 import org.schema.game.common.controller.elements.ModuleExplosion;
+import org.schema.game.common.controller.elements.activation.ActivationCollectionManager;
+import org.schema.game.common.controller.elements.activation.ActivationElementManager;
 import org.schema.game.common.data.SegmentPiece;
 import org.schema.game.common.data.element.ElementCollection;
+import org.schema.game.common.data.player.PlayerState;
 import org.schema.game.common.data.world.Segment;
 import videogoose.resourcesrefueled.element.ElementRegistry;
 import videogoose.resourcesrefueled.manager.ConfigManager;
@@ -22,25 +24,29 @@ import videogoose.resourcesrefueled.systems.FluidTankSystemModule;
 import java.util.Collections;
 import java.util.List;
 
-public class SegmentPieceEventHandler implements SegmentPieceAddListener, SegmentPieceRemoveListener, SegmentPieceKilledListener {
+public class SegmentPieceEventHandler implements SegmentPieceAddListener, SegmentPieceRemoveListener, SegmentPieceKilledListener, SegmentPieceActivateListener, SegmentPiecePlayerInteractListener {
 	@Override
 	public void onAdd(SegmentController segmentController, short type, byte orientation, byte x, byte y, byte z, Segment segment, boolean updateSegmentBuffer, long index, boolean server) {
-		if(server && segmentController instanceof ManagedUsableSegmentController<?>) {
-			ManagerContainer<?> container = ((ManagedUsableSegmentController<?>) segmentController).getManagerContainer();
-			if(container.getModMCModule(ElementRegistry.FLUID_TANK.getId()) instanceof FluidTankSystemModule) {
-				FluidTankSystemModule module = (FluidTankSystemModule) container.getModMCModule(ElementRegistry.FLUID_TANK.getId());
-				module.onPlace(index, type);
+		if(ElementRegistry.canInteractWithFluid(type) || ElementRegistry.isPipe(type)) {
+			if(server && segmentController instanceof ManagedUsableSegmentController<?>) {
+				ManagerContainer<?> container = ((ManagedUsableSegmentController<?>) segmentController).getManagerContainer();
+				if(container.getModMCModule(ElementRegistry.FLUID_TANK.getId()) instanceof FluidTankSystemModule) {
+					FluidTankSystemModule module = (FluidTankSystemModule) container.getModMCModule(ElementRegistry.FLUID_TANK.getId());
+					module.onPlace(index, type);
+				}
 			}
 		}
 	}
 
 	@Override
 	public void onBlockRemove(short type, int segmentSize, byte x, byte y, byte z, byte b3, Segment segment, boolean preserveControl, boolean server) {
-		if(server && segment.getSegmentController() instanceof ManagedUsableSegmentController<?>) {
-			ManagerContainer<?> container = ((ManagedUsableSegmentController<?>) segment.getSegmentController()).getManagerContainer();
-			if(container.getModMCModule(ElementRegistry.FLUID_TANK.getId()) instanceof FluidTankSystemModule) {
-				FluidTankSystemModule module = (FluidTankSystemModule) container.getModMCModule(ElementRegistry.FLUID_TANK.getId());
-				module.onRemove(ElementCollection.getIndex4(x, y, z, type), type);
+		if(ElementRegistry.canInteractWithFluid(type) || ElementRegistry.isPipe(type)) {
+			if(server && segment.getSegmentController() instanceof ManagedUsableSegmentController<?>) {
+				ManagerContainer<?> container = ((ManagedUsableSegmentController<?>) segment.getSegmentController()).getManagerContainer();
+				if(container.getModMCModule(ElementRegistry.FLUID_TANK.getId()) instanceof FluidTankSystemModule) {
+					FluidTankSystemModule module = (FluidTankSystemModule) container.getModMCModule(ElementRegistry.FLUID_TANK.getId());
+					module.onRemove(ElementCollection.getIndex4(x, y, z, type), type);
+				}
 			}
 		}
 	}
@@ -48,8 +54,7 @@ public class SegmentPieceEventHandler implements SegmentPieceAddListener, Segmen
 	@Override
 	public void onBlockKilled(SegmentPiece segmentPiece, SendableSegmentController sendableSegmentController, @Nullable Damager damager, boolean b) {
 		short type = segmentPiece.getType();
-		if(type != ElementRegistry.FLUID_TANK.getId() && !ElementRegistry.isPipe(type)) return;
-
+		if(type != ElementRegistry.FLUID_TANK.getId()) return;
 		if(sendableSegmentController instanceof ManagedUsableSegmentController<?>) {
 			ManagedUsableSegmentController<?> managed = (ManagedUsableSegmentController<?>) sendableSegmentController;
 			ManagerContainer<?> managerContainer = managed.getManagerContainer();
@@ -67,6 +72,14 @@ public class SegmentPieceEventHandler implements SegmentPieceAddListener, Segmen
 				}
 			}
 		}
+	}
+
+	@Override
+	public void onActivate(ActivationElementManager activationElementManager, SegmentPiece segmentPiece, ActivationCollectionManager activationCollectionManager, boolean b, boolean b1) {
+	}
+
+	@Override
+	public void onInteract(SegmentPiece segmentPiece, PlayerState playerState, PlayerInteractionControlManager playerInteractionControlManager) {
 	}
 
 	private List<ModuleExplosion> createExplosionList(SegmentPiece segmentPiece, FluidTankSystemModule tankModule, long blockIndex) {
