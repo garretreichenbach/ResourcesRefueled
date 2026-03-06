@@ -62,7 +62,7 @@ public class ExtractorFuelListener implements FactoryManufactureListener {
 		FluidSystemModule tankModule = (FluidSystemModule) entity.getManagerContainer().getModMCModule(ElementRegistry.FLUID_TANK.getId());
 		EntityFuelManager.writeBackToLive(uid, tankModule, inventory);
 
-		// Now snapshot the current live state into the virtualised cache.
+		// Now snapshot the current live state into the virtualized cache.
 		// Source 1: FluidTankSystemModule (may be null if this system isn't installed/loaded).
 		// Source 2: Heliogen Canisters in the factory inventory.
 		int canisters = inventory.getOverallQuantity(ElementRegistry.HELIOGEN_CANISTER.getId());
