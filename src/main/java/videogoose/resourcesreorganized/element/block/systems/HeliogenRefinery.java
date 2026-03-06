@@ -47,8 +47,8 @@ public class HeliogenRefinery extends Block {
 	public void postInitData() {
 		try {
 			short plasmaId = ElementRegistry.HELIOGEN_PLASMA.getId();
-			short filledId = ElementRegistry.HELIOGEN_CANISTER_FILLED.getId();
-			short emptyId = ElementRegistry.HELIOGEN_CANISTER_EMPTY.getId();
+			short filledId = ElementRegistry.HELIOGEN_CANISTER.getId();
+			short emptyId = ElementRegistry.FLUID_CANISTER_EMPTY.getId();
 
 			FixedRecipeProduct product = new FixedRecipeProduct();
 			product.input = new FactoryResource[]{new FactoryResource(PLASMA_PER_CANISTER, plasmaId), new FactoryResource(1, emptyId)};

@@ -108,7 +108,7 @@ public class ShipJumpFuelListener extends Listener<ShipJumpEngageEvent> {
 
 	/** Counts total filled Heliogen Canisters across all ship inventories. */
 	private static int countInventoryCanisters(ShipManagerContainer shipManagerContainer) {
-		short filledId = ElementRegistry.HELIOGEN_CANISTER_FILLED.getId();
+		short filledId = ElementRegistry.HELIOGEN_CANISTER.getId();
 		int total = 0;
 		for(Inventory inventory : shipManagerContainer.getInventories().values()) {
 			total += inventory.getOverallQuantity(filledId);

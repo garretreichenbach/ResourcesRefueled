@@ -7,11 +7,12 @@ import videogoose.resourcesreorganized.ResourcesReorganized;
 import videogoose.resourcesreorganized.element.block.pipes.PipeFilter;
 import videogoose.resourcesreorganized.element.block.pipes.PipePump;
 import videogoose.resourcesreorganized.element.block.pipes.PipeValve;
+import videogoose.resourcesreorganized.element.block.systems.FluidPort;
 import videogoose.resourcesreorganized.element.block.systems.FluidTank;
 import videogoose.resourcesreorganized.element.block.systems.HeliogenCondenser;
 import videogoose.resourcesreorganized.element.block.systems.HeliogenRefinery;
-import videogoose.resourcesreorganized.element.item.HeliogenCanisterEmpty;
-import videogoose.resourcesreorganized.element.item.HeliogenCanisterFilled;
+import videogoose.resourcesreorganized.element.item.FluidCanisterEmpty;
+import videogoose.resourcesreorganized.element.item.HeliogenCanister;
 import videogoose.resourcesreorganized.element.item.HeliogenPlasma;
 
 /**
@@ -20,8 +21,8 @@ import videogoose.resourcesreorganized.element.item.HeliogenPlasma;
 public enum ElementRegistry {
 	//Items
 	HELIOGEN_PLASMA(new HeliogenPlasma()),
-	HELIOGEN_CANISTER_EMPTY(new HeliogenCanisterEmpty()),
-	HELIOGEN_CANISTER_FILLED(new HeliogenCanisterFilled()),
+	FLUID_CANISTER_EMPTY(new FluidCanisterEmpty()),
+	HELIOGEN_CANISTER(new HeliogenCanister()),
 
 	//Item network blocks
 //	CONVERYOR_BELT(new ConveyorBelt()),
@@ -31,6 +32,7 @@ public enum ElementRegistry {
 	PIPE_FILTER(new PipeFilter()),
 	PIPE_PUMP(new PipePump()),
 	FLUID_TANK(new FluidTank()),
+	FLUID_PORT(new FluidPort()),
 
 	//Heliogen production blocks
 	HELIOGEN_CONDENSER(new HeliogenCondenser()),

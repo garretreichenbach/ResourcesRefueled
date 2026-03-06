@@ -9,12 +9,12 @@ package videogoose.resourcesreorganized.element.item;
  * The fuel consumption logic in ExtractorFuelListener and the ShipJumpEngageEvent
  * listener checks for this item in cargo by ID.
  */
-public class HeliogenCanisterFilled extends Item {
+public class HeliogenCanister extends Item {
 
 	public static final float VOLUME = 0.3f;
 
-	public HeliogenCanisterFilled() {
-		super("Heliogen Canister (Filled)");
+	public HeliogenCanister() {
+		super("Heliogen Canister");
 	}
 
 	@Override

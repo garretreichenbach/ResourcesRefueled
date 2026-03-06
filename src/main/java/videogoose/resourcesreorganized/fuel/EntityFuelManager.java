@@ -153,7 +153,7 @@ public final class EntityFuelManager {
 	public static void syncFromLive(String uid, FluidSystemModule tankModule, int canisterCount) {
 		EntityFuelCache cache = getOrCreate(uid);
 
-		if(tankModule != null && tankModule.getFluidId() == ElementRegistry.HELIOGEN_CANISTER_FILLED.getId()) {
+		if(tankModule != null && tankModule.getFluidId() == ElementRegistry.HELIOGEN_CANISTER.getId()) {
 			cache.tankFluidLevel = tankModule.getCurrentFluidLevel();
 			cache.fluidId = tankModule.getFluidId();
 		} else {
@@ -207,7 +207,7 @@ public final class EntityFuelManager {
 		// Drain the exact delta consumed from the tank since the last sync.
 		// Using tankModule.drain() preserves per-network proportionality rather than
 		// redistributing a flat total with setCurrentFluidLevel().
-		if(tankModule != null && tankModule.getFluidId() == ElementRegistry.HELIOGEN_CANISTER_FILLED.getId()) {
+		if(tankModule != null && tankModule.getFluidId() == ElementRegistry.HELIOGEN_CANISTER.getId()) {
 			double tankDelta = cache.snapshotTankFluidLevel - cache.tankFluidLevel;
 			if(tankDelta > 0) {
 				double actuallyDrained = tankModule.drain(tankDelta);
@@ -219,8 +219,8 @@ public final class EntityFuelManager {
 		// Reconcile canister inventory using the snapshot delta.
 		int canistersConsumed = cache.snapshotCanisterCount - cache.canisterCount;
 		if(canistersConsumed > 0 && inventories != null) {
-			short filledId = ElementRegistry.HELIOGEN_CANISTER_FILLED.getId();
-			short emptyId = ElementRegistry.HELIOGEN_CANISTER_EMPTY.getId();
+			short filledId = ElementRegistry.HELIOGEN_CANISTER.getId();
+			short emptyId = ElementRegistry.FLUID_CANISTER_EMPTY.getId();
 			int remaining = canistersConsumed;
 			for(Inventory inventory : inventories) {
 				if(inventory == null || remaining <= 0) continue;

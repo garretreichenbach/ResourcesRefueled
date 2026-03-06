@@ -80,6 +80,12 @@ public class SegmentPieceEventHandler implements SegmentPieceAddListener, Segmen
 
 	@Override
 	public void onInteract(SegmentPiece segmentPiece, PlayerState playerState, PlayerInteractionControlManager playerInteractionControlManager) {
+		//I really wish I could use a switch statement here but Java doesn't allow switching on non-constant values
+		if(!playerState.isOnServer()) {
+			if(segmentPiece.getType() == ElementRegistry.FLUID_PORT.getId()) {
+
+			}
+		}
 	}
 
 	private List<ModuleExplosion> createExplosionList(SegmentPiece segmentPiece, FluidSystemModule tankModule, long blockIndex) {

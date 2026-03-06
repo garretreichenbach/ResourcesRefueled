@@ -65,7 +65,7 @@ public class ExtractorFuelListener implements FactoryManufactureListener {
 		// Now snapshot the current live state into the virtualised cache.
 		// Source 1: FluidTankSystemModule (may be null if this system isn't installed/loaded).
 		// Source 2: Heliogen Canisters in the factory inventory.
-		int canisters = inventory.getOverallQuantity(ElementRegistry.HELIOGEN_CANISTER_FILLED.getId());
+		int canisters = inventory.getOverallQuantity(ElementRegistry.HELIOGEN_CANISTER.getId());
 		EntityFuelManager.syncFromLive(uid, tankModule, canisters);
 
 		// Debug mode shortcut: provide a large fake fuel reserve so extractors run without real Heliogen.
