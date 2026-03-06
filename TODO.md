@@ -78,10 +78,10 @@ Star-proximity-boosted Anbaric + Parsyne → Heliogen Plasma conversion.
 - ✅ `condenser_base_output` (4) — bonus plasma per cycle at proximity 1.0 next to a normal star
 - ✅ `condenser_proximity_scale` (true) — if false, proximity is treated as 1.0 (star class bonus only)
 - ✅ `ftl_fuel_per_sector` (1.0)
-- ✅ `fuel_per_canister` (100.0)
+- ✅ `capacity_per_canister` (100.0)
 - ✅ `ftl_unfueled_cooldown_multiplier` (3.0) — wired in config, not yet applied in code
 - ✅ `fluid_level_per_explosion`, `max_fluid_explosion_radius`, `fluid_explosion_damage` — added to config defaults
-- ⬜ `fluid_tank_capacity_per_block` — capacity contributed by each placed tank block (needed for Section 8)
+- ⬜ `capacity_per_tank` — capacity contributed by each placed tank block (needed for Section 8)
 
 ---
 
@@ -134,7 +134,7 @@ inherited `blocks` map is neither read nor written by this module after the refa
 
 #### 8.7 — Config addition
 
-- ✅ `fluid_tank_capacity_per_block: 500.0` added to `ConfigManager` defaults.
+- ✅ `capacity_per_tank: 500.0` added to `ConfigManager` defaults.
 - ✅ `ConfigManager.getFluidTankCapacityPerBlock()` accessor added.
 
 ---

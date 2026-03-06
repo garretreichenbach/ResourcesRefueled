@@ -13,11 +13,13 @@ import org.schema.game.common.data.element.Element;
 import org.schema.game.common.data.element.ElementCollection;
 import org.schema.game.common.data.element.ElementKeyMap;
 import org.schema.game.common.data.player.inventory.Inventory;
+import org.schema.game.common.data.player.inventory.InventorySlot;
 import org.schema.schine.graphicsengine.core.Timer;
 import org.schema.schine.graphicsengine.forms.BoundingBox;
 import videogoose.resourcesreorganized.ResourcesReorganized;
 import videogoose.resourcesreorganized.element.ElementRegistry;
 import videogoose.resourcesreorganized.manager.ConfigManager;
+import videogoose.resourcesreorganized.utils.CanisterMeta;
 
 import java.io.IOException;
 import java.util.*;
@@ -52,6 +54,8 @@ public class FluidSystemModule extends SystemModule {
 	private final HashMap<Long, FluidTankSegment> tankSegments = new HashMap<>();
 	/** All pipe-network blocks on this entity, keyed by block index. */
 	private final HashMap<Long, FluidPipeSegment> pipeSegments = new HashMap<>();
+	/** All fluid port blocks on this entity, keyed by block index. */
+	private final HashMap<Long, FluidPortSegment> portSegments = new HashMap<>();
 	/**
 	 * The live set of connected fluid networks on this entity.
 	 * Each network is an independent fluid container.
@@ -182,7 +186,7 @@ public class FluidSystemModule extends SystemModule {
 			}
 
 			// Calculate flow rate in L/s (positive means pumping)
-			seg.flowRate = (float)(transferable * ticksPerSecond);
+			seg.flowRate = (float) (transferable * ticksPerSecond);
 
 			anyChange = true;
 			if(ConfigManager.isDebugMode()) {
@@ -191,6 +195,13 @@ public class FluidSystemModule extends SystemModule {
 		}
 
 		if(anyChange) flagUpdatedData();
+
+		// ---- Fluid Port tick ------------------------------------------------
+		// For each registered fluid port, if it is active:
+		//   Slot 0 (input)  — filled canisters: consume one, add fuelPerCanister units to the adjacent network.
+		//   Slot 1 (output) — empty canisters:  if the adjacent network has enough fluid, consume one empty
+		//                     canister, drain fuelPerCanister units from the network, and produce one filled canister.
+		tickFluidPorts();
 	}
 
 	// =========================================================================
@@ -208,6 +219,12 @@ public class FluidSystemModule extends SystemModule {
 	public void onPlace(long index, short blockType) {
 		if(blockType == ElementRegistry.FLUID_TANK.getId()) {
 			tankSegments.put(index, new FluidTankSegment(index, blockType));
+		} else if(blockType == ElementRegistry.FLUID_PORT.getId()) {
+			// Fluid ports are tracked separately — they are not network members but
+			// sit adjacent to networks and transfer fluid via their inventory each tick.
+			portSegments.put(index, new FluidPortSegment(index));
+			flagUpdatedData();
+			return;
 		} else if(ElementRegistry.isPipe(blockType)) {
 			// If this is a plain/vanilla pipe piece and it is not connected to any functional
 			// component (tank, pump/valve/filter) or an existing network with capacity, treat
@@ -308,9 +325,7 @@ public class FluidSystemModule extends SystemModule {
 	 * acts as a network boundary rather than a passive conduit.
 	 */
 	private boolean isNetworkDevice(short blockType) {
-		return blockType == ElementRegistry.PIPE_PUMP.getId()
-				|| blockType == ElementRegistry.PIPE_VALVE.getId()
-				|| blockType == ElementRegistry.PIPE_FILTER.getId();
+		return blockType == ElementRegistry.PIPE_PUMP.getId() || blockType == ElementRegistry.PIPE_VALVE.getId() || blockType == ElementRegistry.PIPE_FILTER.getId();
 	}
 
 	/**
@@ -389,6 +404,12 @@ public class FluidSystemModule extends SystemModule {
 	 * @param blockType Element ID of the removed block.
 	 */
 	public void onRemove(long index, short blockType) {
+		// Fluid ports are tracked separately and are not network members.
+		if(portSegments.remove(index) != null) {
+			flagUpdatedData();
+			return;
+		}
+
 		boolean wasTank = tankSegments.remove(index) != null;
 		boolean wasPipe = !wasTank && pipeSegments.remove(index) != null;
 		if(!wasTank && !wasPipe) return;
@@ -516,7 +537,7 @@ public class FluidSystemModule extends SystemModule {
 		for(long idx : net.memberIndices) {
 			if(tankSegments.containsKey(idx)) tankCount++;
 		}
-		net.tankCapacity = tankCount * ConfigManager.getFluidTankCapacityPerBlock();
+		net.tankCapacity = tankCount * ConfigManager.getCapacityPerTank();
 	}
 
 	@Override
@@ -725,7 +746,7 @@ public class FluidSystemModule extends SystemModule {
 
 	// =========================================================================
 	// Explosion helpers
-	// =========================================================================
+	// =======================E==================================================
 
 	/**
 	 * Returns the fluid level of the network containing {@code blockIndex},
@@ -834,70 +855,100 @@ public class FluidSystemModule extends SystemModule {
 		return totalFlow;
 	}
 
+	/**
+	 * Called every tick from {@link #handle}. For each placed fluid port:
+	 * <ul>
+	 *   <li><b>Slot 0 (input):</b> if a filled canister is present, consume it and add
+	 *       {@link ConfigManager#getCapacityPerCanister()} units to the first adjacent network
+	 *       that has free capacity and a matching (or empty) fluid ID.</li>
+	 *   <li><b>Slot 1 (output):</b> if an empty canister is present and the adjacent network
+	 *       has at least one canister-worth of fluid, drain that amount and return a filled
+	 *       canister to slot 1.</li>
+	 * </ul>
+	 * Only processes ports whose block's active-state flag is set (toggled via logic or R-click).
+	 * Only runs on the server side (the module's {@link #handle} is already server-only).
+	 */
+	private void tickFluidPorts() {
+		if(portSegments.isEmpty()) return;
+		double unitsPerCanister = ConfigManager.getCapacityPerCanister();
+		short canisterId = ElementRegistry.FLUID_CANISTER.getId();
+		boolean anyChange = false;
+
+		for(FluidPortSegment port : portSegments.values()) {
+			SegmentPiece piece = segmentController.getSegmentBuffer().getPointUnsave(port.blockIndex);
+			if(piece == null) continue;
+			if(!piece.isActive()) continue;
+
+			Inventory inv = getInventory(piece);
+			if(inv == null) continue;
+
+			// --- Slot 0 : filled canister → network (drain canister) ---
+			int filledSlotId = CanisterMeta.findFilledSlot(inv, canisterId, (short) 0);
+			if(filledSlotId >= 0) {
+				InventorySlot filledSlot = inv.getSlot(filledSlotId);
+				short sourceFluidId = CanisterMeta.getFluidId(filledSlot);
+
+				FluidNetwork target = null;
+				for(long nb : faceAdjacentIndices(port.blockIndex)) {
+					for(FluidNetwork net : networks) {
+						if(!net.memberIndices.contains(nb)) continue;
+						if(net.tankCapacity - net.fluidLevel < unitsPerCanister) continue;
+						if(net.fluidId != 0 && net.fluidId != sourceFluidId) continue;
+						target = net;
+						break;
+					}
+					if(target != null) break;
+				}
+				if(target != null) {
+					CanisterMeta.writeEmpty(filledSlot);
+					target.fluidLevel = Math.min(target.tankCapacity, target.fluidLevel + unitsPerCanister);
+					if(target.fluidId == 0) target.fluidId = sourceFluidId;
+					anyChange = true;
+					if(ConfigManager.isDebugMode()) {
+						ResourcesReorganized.getInstance().logInfo("[FluidPort] @ " + port.blockIndex + " drained 1 filled canister (fluid=" + sourceFluidId + ") into network (" + unitsPerCanister + " units). Network now at " + target.fluidLevel + "/" + target.tankCapacity);
+					}
+				}
+			}
+
+			// --- Slot 1 : empty canister → fill from network ---
+			int emptySlotId = CanisterMeta.findEmptySlot(inv, canisterId);
+			if(emptySlotId >= 0) {
+				FluidNetwork source = null;
+				for(long nb : faceAdjacentIndices(port.blockIndex)) {
+					for(FluidNetwork net : networks) {
+						if(!net.memberIndices.contains(nb)) continue;
+						if(net.fluidLevel < unitsPerCanister) continue;
+						source = net;
+						break;
+					}
+					if(source != null) break;
+				}
+				if(source != null) {
+					short networkFluidId = source.fluidId;
+					source.fluidLevel = Math.max(0.0, source.fluidLevel - unitsPerCanister);
+					if(source.fluidLevel <= 0) {
+						source.fluidLevel = 0;
+						source.fluidId = 0;
+					}
+					InventorySlot emptySlot = inv.getSlot(emptySlotId);
+					CanisterMeta.writeFilledSlot(emptySlot, networkFluidId, unitsPerCanister, unitsPerCanister);
+					anyChange = true;
+					if(ConfigManager.isDebugMode()) {
+						ResourcesReorganized.getInstance().logInfo("[FluidPort] @ " + port.blockIndex + " filled 1 canister with fluid=" + networkFluidId + " (" + unitsPerCanister + " units drained). Network now at " + source.fluidLevel + "/" + source.tankCapacity);
+					}
+				}
+			}
+		}
+
+		if(anyChange) flagUpdatedData();
+	}
+
 	public Inventory getInventory(SegmentPiece segmentPiece) {
 		if(segmentPiece.getSegmentController() instanceof ManagedUsableSegmentController<?>) {
 			ManagedUsableSegmentController<?> controller = (ManagedUsableSegmentController<?>) segmentPiece.getSegmentController();
 			return controller.getManagerContainer().getInventory(segmentPiece.getAbsoluteIndex());
 		}
 		return null;
-	}
-
-	/** One placed {@code FLUID_TANK} block — contributes capacity to its network. */
-	public static final class FluidTankSegment {
-		public final long blockIndex;
-		public final short blockType;
-
-		public FluidTankSegment(long blockIndex, short blockType) {
-			this.blockIndex = blockIndex;
-			this.blockType = blockType;
-		}
-	}
-
-	/** One placed pipe-network block (pipe, pump, valve, filter). */
-	public static final class FluidPipeSegment {
-		public final long blockIndex;
-		public final short blockType;
-		/** Flow rate in L/s for pumps. Positive = outflow from source, Negative = inflow to target, 0 = no flow */
-		public float flowRate;
-
-		public FluidPipeSegment(long blockIndex, short blockType) {
-			this.blockIndex = blockIndex;
-			this.blockType = blockType;
-			this.flowRate = 0;
-		}
-	}
-
-	/**
-	 * A single connected component of the fluid network.
-	 * <p>
-	 * Membership ({@link #memberIndices}) covers both tank and pipe blocks.
-	 * Capacity is derived structurally: {@code tankCount × capacityPerBlock}.
-	 * Fluid level is never allowed to exceed capacity.
-	 */
-	public static final class FluidNetwork {
-		/** All block indices (tanks + pipes) that belong to this network. */
-		public final Set<Long> memberIndices = new HashSet<>();
-		/** Current stored fluid units. Always ≤ {@link #tankCapacity}. */
-		public double fluidLevel;
-		/** Cached capacity — recalculated by {@link FluidSystemModule#recalculateNetworkCapacity}. */
-		public double tankCapacity;
-		/** The fluid type this network contains (e.g. HELIOGEN_CANISTER_FILLED). 0 = empty/no fluid. */
-		public short fluidId;
-
-		/** True when this network has no blocks at all. */
-		public boolean isEmpty() {
-			return memberIndices.isEmpty();
-		}
-
-		public String getFluidName() {
-			if(fluidId == 0) {
-				return "Empty";
-			} else if(ElementKeyMap.isValidType(fluidId)) {
-				return ElementKeyMap.getInfo(fluidId).getName();
-			} else {
-				return "Unknown";
-			}
-		}
 	}
 
 	/**
@@ -958,5 +1009,72 @@ public class FluidSystemModule extends SystemModule {
 			flagUpdatedData();
 		}
 		return added;
+	}
+
+	/** One placed {@code FLUID_PORT} block — bridges inventory and the fluid network each tick. */
+	public static final class FluidPortSegment {
+		public final long blockIndex;
+
+		public FluidPortSegment(long blockIndex) {
+			this.blockIndex = blockIndex;
+		}
+	}
+
+	/** One placed {@code FLUID_TANK} block — contributes capacity to its network. */
+	public static final class FluidTankSegment {
+		public final long blockIndex;
+		public final short blockType;
+
+		public FluidTankSegment(long blockIndex, short blockType) {
+			this.blockIndex = blockIndex;
+			this.blockType = blockType;
+		}
+	}
+
+	/** One placed pipe-network block (pipe, pump, valve, filter). */
+	public static final class FluidPipeSegment {
+		public final long blockIndex;
+		public final short blockType;
+		/** Flow rate in L/s for pumps. Positive = outflow from source, Negative = inflow to target, 0 = no flow */
+		public float flowRate;
+
+		public FluidPipeSegment(long blockIndex, short blockType) {
+			this.blockIndex = blockIndex;
+			this.blockType = blockType;
+			flowRate = 0;
+		}
+	}
+
+	/**
+	 * A single connected component of the fluid network.
+	 * <p>
+	 * Membership ({@link #memberIndices}) covers both tank and pipe blocks.
+	 * Capacity is derived structurally: {@code tankCount × capacityPerBlock}.
+	 * Fluid level is never allowed to exceed capacity.
+	 */
+	public static final class FluidNetwork {
+		/** All block indices (tanks + pipes) that belong to this network. */
+		public final Set<Long> memberIndices = new HashSet<>();
+		/** Current stored fluid units. Always ≤ {@link #tankCapacity}. */
+		public double fluidLevel;
+		/** Cached capacity — recalculated by {@link FluidSystemModule#recalculateNetworkCapacity}. */
+		public double tankCapacity;
+		/** The fluid element ID this network contains (matches the fluid_id metadata on canisters). 0 = empty/no fluid. */
+		public short fluidId;
+
+		/** True when this network has no blocks at all. */
+		public boolean isEmpty() {
+			return memberIndices.isEmpty();
+		}
+
+		public String getFluidName() {
+			if(fluidId == 0) {
+				return "Empty";
+			} else if(ElementKeyMap.isValidType(fluidId)) {
+				return ElementKeyMap.getInfo(fluidId).getName();
+			} else {
+				return "Unknown";
+			}
+		}
 	}
 }

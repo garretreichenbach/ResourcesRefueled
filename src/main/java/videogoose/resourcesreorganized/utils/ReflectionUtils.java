@@ -8,25 +8,25 @@ import java.util.Arrays;
  */
 public class ReflectionUtils {
 
-	public static Object invokePrivateMethod(Object instance, String methodName, Class<?>[] paramTypes, Object... args) throws Exception {
+	public static Object invokeMethod(Object instance, String methodName, Class<?>[] paramTypes, Object... args) throws Exception {
 		Method method = instance.getClass().getDeclaredMethod(methodName, paramTypes);
 		method.setAccessible(true);
 		return method.invoke(instance, args);
 	}
 
-	public static Object invokePrivateStaticMethod(Class<?> clazz, String methodName, Class<?>[] paramTypes, Object... args) throws Exception {
+	public static Object invokeStaticMethod(Class<?> clazz, String methodName, Class<?>[] paramTypes, Object... args) throws Exception {
 		Method method = clazz.getDeclaredMethod(methodName, paramTypes);
 		method.setAccessible(true);
 		return method.invoke(null, args);
 	}
 
-	public static Object getPrivateField(Object instance, String fieldName) throws Exception {
+	public static Object getField(Object instance, String fieldName) throws Exception {
 		Field field = instance.getClass().getDeclaredField(fieldName);
 		field.setAccessible(true);
 		return field.get(instance);
 	}
 
-	public static void setPrivateField(Object instance, String fieldName, Object value) throws Exception {
+	public static void setField(Object instance, String fieldName, Object value) throws Exception {
 		Field field = instance.getClass().getDeclaredField(fieldName);
 		field.setAccessible(true);
 		field.set(instance, value);

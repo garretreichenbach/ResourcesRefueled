@@ -12,7 +12,7 @@ import java.io.Serializable;
  * world-save (via {@link EntityFuelManager#writeBackToLive}).
  * <p>
  * All fuel in this cache is expressed in the same unit: fluid units.
- * Canisters are converted using {@link videogoose.resourcesreorganized.manager.ConfigManager#getFuelPerCanister()}.
+ * Canisters are converted using {@link videogoose.resourcesreorganized.manager.ConfigManager#getCapacityPerCanister()}.
  */
 public class EntityFuelCache implements Serializable {
 

@@ -16,6 +16,7 @@ import videogoose.resourcesreorganized.fuel.EntityFuelManager;
 import videogoose.resourcesreorganized.fuel.FuelTickState;
 import videogoose.resourcesreorganized.manager.ConfigManager;
 import videogoose.resourcesreorganized.systems.FluidSystemModule;
+import videogoose.resourcesreorganized.utils.CanisterMeta;
 
 import static org.ithirahad.resourcesresourced.listeners.BlockRemovalLogic.isExtractor;
 
@@ -65,7 +66,7 @@ public class ExtractorFuelListener implements FactoryManufactureListener {
 		// Now snapshot the current live state into the virtualized cache.
 		// Source 1: FluidTankSystemModule (may be null if this system isn't installed/loaded).
 		// Source 2: Heliogen Canisters in the factory inventory.
-		int canisters = inventory.getOverallQuantity(ElementRegistry.HELIOGEN_CANISTER.getId());
+		int canisters = CanisterMeta.countFilled(inventory, ElementRegistry.FLUID_CANISTER.getId());
 		EntityFuelManager.syncFromLive(uid, tankModule, canisters);
 
 		// Debug mode shortcut: provide a large fake fuel reserve so extractors run without real Heliogen.
@@ -104,7 +105,7 @@ public class ExtractorFuelListener implements FactoryManufactureListener {
 		if(available <= 0) return;
 
 		// Cost for this cycle
-		double costUnits = Math.max(ConfigManager.getFuelPerCanister(), quantity * ConfigManager.getFuelCostPerStrengthUnit() * ConfigManager.getFuelPerCanister());
+		double costUnits = Math.max(ConfigManager.getCapacityPerCanister(), quantity * ConfigManager.getFuelCostPerStrengthUnit() * ConfigManager.getCapacityPerCanister());
 
 		// Deduct what the strength listener already spent this tick
 		double alreadySpent = FuelTickState.spentFuelUnits.getOrDefault(uid, 0.0);

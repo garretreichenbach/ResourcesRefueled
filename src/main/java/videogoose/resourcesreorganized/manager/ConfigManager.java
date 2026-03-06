@@ -13,12 +13,12 @@ public final class ConfigManager {
 			"condenser_base_output: 4 # Bonus Heliogen Plasma units produced per cycle at proximity 1.0 next to a normal star.",
 			"condenser_proximity_scale: true # If false, condenser output is flat regardless of star proximity (base recipe only + star class bonus).",
 			"ftl_fuel_per_sector: 0.0 # Heliogen canisters consumed per sector of FTL jump distance.",
-			"fuel_per_canister: 100.0 # Fluid units represented by one filled Heliogen Canister when drawing from a tank.",
+			"capacity_per_canister: 100.0 # Capacity in fluid units of a single canister.",
+			"capacity_per_tank: 500.0 # Fluid units of capacity contributed by each placed Fluid Tank block.",
 			"fluid_levels_per_explosion: 3000 # Amount of fluid in a tank that corresponds to one explosion when the tank is destroyed. Higher values = fewer explosions.",
 			"max_fluid_explosion_radius: 15.0 # Maximum radius for explosions caused by fluid tanks. Actual explosion radius scales with fluid level, up to this maximum.",
 			"fluid_tank_explosion_damage: 10000.0 # Damage dealt by explosions caused by fluid tanks.",
-			"fluid_tank_capacity_per_block: 5(00.0 # Fluid units of capacity contributed by each placed Fluid Tank block.",
-			"pump_transfer_per_tick: 50.0 # Fluid units a pump attempts to move per tick.",
+			"pump_transfer_per_tick: 20.0 # Fluid units a pump attempts to move per tick.",
 	};
 
 	public static void initialize(ResourcesReorganized instance) {
@@ -87,9 +87,9 @@ public final class ConfigManager {
 		}
 	}
 
-	public static double getFuelPerCanister() {
+	public static double getCapacityPerCanister() {
 		try {
-			return Double.parseDouble(mainConfig.getString("fuel_per_canister"));
+			return Double.parseDouble(mainConfig.getString("capacity_per_canister"));
 		} catch(Exception e) {
 			return 100.0;
 		}
@@ -119,9 +119,9 @@ public final class ConfigManager {
 		}
 	}
 
-	public static double getFluidTankCapacityPerBlock() {
+	public static double getCapacityPerTank() {
 		try {
-			return Double.parseDouble(mainConfig.getString("fluid_tank_capacity_per_block"));
+			return Double.parseDouble(mainConfig.getString("capacity_per_tank"));
 		} catch(Exception e) {
 			return 500.0;
 		}

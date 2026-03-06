@@ -2,11 +2,12 @@ package videogoose.resourcesreorganized.fuel;
 
 import api.mod.config.PersistentObjectUtil;
 import org.schema.game.common.data.player.inventory.Inventory;
+import org.schema.game.common.data.player.inventory.InventorySlot;
 import videogoose.resourcesreorganized.ResourcesReorganized;
 import videogoose.resourcesreorganized.element.ElementRegistry;
 import videogoose.resourcesreorganized.manager.ConfigManager;
 import videogoose.resourcesreorganized.systems.FluidSystemModule;
-import videogoose.resourcesreorganized.utils.InventoryUtils;
+import videogoose.resourcesreorganized.utils.CanisterMeta;
 
 import java.util.ArrayList;
 import java.util.Map;
@@ -153,7 +154,7 @@ public final class EntityFuelManager {
 	public static void syncFromLive(String uid, FluidSystemModule tankModule, int canisterCount) {
 		EntityFuelCache cache = getOrCreate(uid);
 
-		if(tankModule != null && tankModule.getFluidId() == ElementRegistry.HELIOGEN_CANISTER.getId()) {
+		if(tankModule != null && tankModule.getFluidId() == ElementRegistry.FLUID_CANISTER.getId()) {
 			cache.tankFluidLevel = tankModule.getCurrentFluidLevel();
 			cache.fluidId = tankModule.getFluidId();
 		} else {
@@ -178,7 +179,7 @@ public final class EntityFuelManager {
 	 */
 	public static double drainFuelUnits(String uid, double units) {
 		EntityFuelCache cache = getOrCreate(uid);
-		return cache.drain(units, ConfigManager.getFuelPerCanister());
+		return cache.drain(units, ConfigManager.getCapacityPerCanister());
 	}
 
 	// -------------------------------------------------------------------------
@@ -207,7 +208,7 @@ public final class EntityFuelManager {
 		// Drain the exact delta consumed from the tank since the last sync.
 		// Using tankModule.drain() preserves per-network proportionality rather than
 		// redistributing a flat total with setCurrentFluidLevel().
-		if(tankModule != null && tankModule.getFluidId() == ElementRegistry.HELIOGEN_CANISTER.getId()) {
+		if(tankModule != null && tankModule.getFluidId() == ElementRegistry.FLUID_CANISTER.getId()) {
 			double tankDelta = cache.snapshotTankFluidLevel - cache.tankFluidLevel;
 			if(tankDelta > 0) {
 				double actuallyDrained = tankModule.drain(tankDelta);
@@ -219,18 +220,18 @@ public final class EntityFuelManager {
 		// Reconcile canister inventory using the snapshot delta.
 		int canistersConsumed = cache.snapshotCanisterCount - cache.canisterCount;
 		if(canistersConsumed > 0 && inventories != null) {
-			short filledId = ElementRegistry.HELIOGEN_CANISTER.getId();
-			short emptyId = ElementRegistry.FLUID_CANISTER_EMPTY.getId();
+			short canisterId = ElementRegistry.FLUID_CANISTER.getId();
 			int remaining = canistersConsumed;
 			for(Inventory inventory : inventories) {
 				if(inventory == null || remaining <= 0) continue;
-				int toRemove = Math.min(inventory.getOverallQuantity(filledId), remaining);
-				if(toRemove > 0) {
-					int removed = InventoryUtils.removeItems(inventory, filledId, toRemove);
-					if(removed > 0) {
-						inventory.incExistingOrNextFreeSlotWithoutException(emptyId, removed);
-					}
-					remaining -= removed;
+				// Consume filled canisters (identified by metadata) and clear them to empty.
+				for(int slotId : inventory.getAllSlots()) {
+					if(remaining <= 0) break;
+					InventorySlot slot = inventory.getSlot(slotId);
+					if(slot.getType() != canisterId) continue;
+					if(!CanisterMeta.isFilled(slot)) continue;
+					CanisterMeta.writeEmpty(slot);
+					remaining--;
 				}
 			}
 		}
@@ -251,7 +252,7 @@ public final class EntityFuelManager {
 	public static double getAvailableFuelUnits(String uid) {
 		EntityFuelCache cache = container.get(uid);
 		if(cache == null) return 0.0;
-		return cache.totalFuelUnits(ConfigManager.getFuelPerCanister());
+		return cache.totalFuelUnits(ConfigManager.getCapacityPerCanister());
 	}
 }
 

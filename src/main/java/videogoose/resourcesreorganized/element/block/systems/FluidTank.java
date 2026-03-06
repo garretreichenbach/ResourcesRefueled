@@ -4,6 +4,7 @@ import api.config.BlockConfig;
 import api.utils.element.Blocks;
 import videogoose.resourcesreorganized.ResourcesReorganized;
 import videogoose.resourcesreorganized.element.block.Block;
+import videogoose.resourcesreorganized.manager.ConfigManager;
 import videogoose.resourcesreorganized.manager.ResourceManager;
 
 /**
@@ -21,7 +22,7 @@ public class FluidTank extends Block {
 	public void initData() {
 		blockInfo = BlockConfig.newElement(ResourcesReorganized.getInstance(), name, new short[] {0, 0, 0, 0, 0, 0});
 		blockInfo.type = Blocks.PIPE.getInfo().type;
-		blockInfo.description = "A pressurized storage tank for holding fluids.\nConnect to pipes and pumps to fill or drain.";
+		blockInfo.description = "A pressurized storage tank for holding fluids.\nConnect to pipes and pumps to fill or drain.\nHolds up to " + getCapacity() + " mL.";
 		blockInfo.price = (int) (Blocks.STORAGE.getInfo().price);
 		blockInfo.mass = Blocks.STORAGE.getInfo().mass;
 		blockInfo.volume = Blocks.STORAGE.getInfo().volume;
@@ -39,6 +40,10 @@ public class FluidTank extends Block {
 	public void initResources() {
 		short textureId = (short) ResourceManager.getTexture("fluid_tank").getTextureId();
 		blockInfo.setTextureId(new short[] {textureId, textureId, textureId, textureId, textureId, textureId});
+	}
+
+	public static double getCapacity() {
+		return ConfigManager.getCapacityPerTank();
 	}
 }
 

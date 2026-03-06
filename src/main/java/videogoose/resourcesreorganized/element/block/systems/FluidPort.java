@@ -2,9 +2,11 @@ package videogoose.resourcesreorganized.element.block.systems;
 
 import api.config.BlockConfig;
 import api.utils.element.Blocks;
+import org.schema.game.common.data.player.inventory.InventorySlot;
 import videogoose.resourcesreorganized.ResourcesReorganized;
 import videogoose.resourcesreorganized.element.ElementRegistry;
 import videogoose.resourcesreorganized.element.block.Block;
+import videogoose.resourcesreorganized.utils.CanisterMeta;
 
 public class FluidPort extends Block {
 
@@ -24,6 +26,7 @@ public class FluidPort extends Block {
 		blockInfo.maxHitPointsFull = Blocks.STORAGE.getInfo().maxHitPointsFull;
 		blockInfo.shoppable = true;
 		blockInfo.blended = true;
+		blockInfo.canActivate = true;
 		blockInfo.inventoryType = 6; //Other
 	}
 
@@ -37,11 +40,37 @@ public class FluidPort extends Block {
 
 	}
 
+	/**
+	 * Type-only pre-check for drag-drop: any canister could potentially be an input.
+	 * Use {@link #isInputItem(InventorySlot)} for the definitive metadata check.
+	 */
 	public static boolean isInputItem(short id) {
-		return id == ElementRegistry.HELIOGEN_PLASMA.getId() || id == ElementRegistry.HELIOGEN_CANISTER.getId();
+		return id == ElementRegistry.FLUID_CANISTER.getId();
 	}
 
+	/**
+	 * Definitive check: a canister slot is a valid input only if it contains fluid.
+	 */
+	public static boolean isInputItem(InventorySlot slot) {
+		if(slot == null) return false;
+		if(slot.getType() != ElementRegistry.FLUID_CANISTER.getId()) return false;
+		return CanisterMeta.isFilled(slot);
+	}
+
+	/**
+	 * Type-only pre-check for drag-drop: any canister could potentially be an output.
+	 * Use {@link #isOutputItem(InventorySlot)} for the definitive metadata check.
+	 */
 	public static boolean isOutputItem(short id) {
-		return id == ElementRegistry.FLUID_CANISTER_EMPTY.getId();
+		return id == ElementRegistry.FLUID_CANISTER.getId();
+	}
+
+	/**
+	 * Definitive check: a canister slot is a valid output only if it is empty.
+	 */
+	public static boolean isOutputItem(InventorySlot slot) {
+		if(slot == null) return false;
+		if(slot.getType() != ElementRegistry.FLUID_CANISTER.getId()) return false;
+		return CanisterMeta.isEmpty(slot);
 	}
 }

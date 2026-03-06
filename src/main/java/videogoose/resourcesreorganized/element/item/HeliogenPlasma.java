@@ -19,7 +19,7 @@ public class HeliogenPlasma extends Item {
 	@Override
 	public void initData() {
 		super.initData();
-		itemInfo.description = "Raw stellar plasma distilled from the photonic wind of nearby stars. Extremely energetic, but unstable in bulk quantities.\nRefine in a Heliogen Refinery to produce portable Heliogen Canisters suitable for use as fuel.";
+		itemInfo.description = "Raw stellar plasma distilled from the photonic wind of nearby stars. Extremely energetic, but unstable in bulk quantities.";
 		itemInfo.volume = VOLUME;
 		itemInfo.shoppable = false; // Cannot be bought in shops — must be produced.
 		itemInfo.blockResourceType = 0; // Treated as an ore/raw material.

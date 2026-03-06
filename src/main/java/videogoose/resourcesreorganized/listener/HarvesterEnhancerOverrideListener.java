@@ -39,7 +39,7 @@ public class HarvesterEnhancerOverrideListener extends Listener<HarvesterStrengt
 		float enhanceScale = event.getFactoryEnhancedScale(); // >= 1.0, reflects installed enhancers
 
 		// How many fuel units are needed to fully replace the enhancer bonus?
-		double maxFuelForFullBoost = enhanceScale * ConfigManager.getFuelPerCanister();
+		double maxFuelForFullBoost = enhanceScale * ConfigManager.getCapacityPerCanister();
 
 		double available = FuelTickState.availableFuelUnits.getOrDefault(uid, 0.0);
 

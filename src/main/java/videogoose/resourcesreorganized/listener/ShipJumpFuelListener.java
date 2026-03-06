@@ -13,6 +13,7 @@ import videogoose.resourcesreorganized.element.ElementRegistry;
 import videogoose.resourcesreorganized.fuel.EntityFuelManager;
 import videogoose.resourcesreorganized.manager.ConfigManager;
 import videogoose.resourcesreorganized.systems.FluidSystemModule;
+import videogoose.resourcesreorganized.utils.CanisterMeta;
 
 /**
  * Handles Heliogen fuel consumption when a ship engages its FTL drive.
@@ -48,7 +49,7 @@ public class ShipJumpFuelListener extends Listener<ShipJumpEngageEvent> {
 		int totalCanisters = countInventoryCanisters(shipManagerContainer);
 		EntityFuelManager.syncFromLive(uid, tankModule, totalCanisters);
 
-		double fuelPerCanister = ConfigManager.getFuelPerCanister();
+		double fuelPerCanister = ConfigManager.getCapacityPerCanister();
 		double fuelRequired = canistersNeeded * fuelPerCanister;
 		double fuelAvailable = EntityFuelManager.getAvailableFuelUnits(uid);
 
@@ -106,12 +107,12 @@ public class ShipJumpFuelListener extends Listener<ShipJumpEngageEvent> {
 		return new Vector3i(rx, ry, rz);
 	}
 
-	/** Counts total filled Heliogen Canisters across all ship inventories. */
+	/** Counts total filled canisters (by metadata) across all ship inventories. */
 	private static int countInventoryCanisters(ShipManagerContainer shipManagerContainer) {
-		short filledId = ElementRegistry.HELIOGEN_CANISTER.getId();
+		short canisterId = ElementRegistry.FLUID_CANISTER.getId();
 		int total = 0;
 		for(Inventory inventory : shipManagerContainer.getInventories().values()) {
-			total += inventory.getOverallQuantity(filledId);
+			total += CanisterMeta.countFilled(inventory, canisterId);
 		}
 		return total;
 	}

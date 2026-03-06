@@ -6,6 +6,7 @@ import org.schema.game.client.view.gui.inventory.InventorySlotOverlayElement;
 import org.schema.game.client.view.mainmenu.DialogInput;
 import org.schema.game.common.data.SegmentPiece;
 import org.schema.game.common.data.player.inventory.Inventory;
+import org.schema.game.common.data.player.inventory.StashInventory;
 import org.schema.schine.graphicsengine.core.MouseEvent;
 import org.schema.schine.graphicsengine.forms.gui.GUIAncor;
 import org.schema.schine.graphicsengine.forms.gui.TooltipProvider;
@@ -15,7 +16,6 @@ import org.schema.schine.input.InputState;
 import videogoose.resourcesreorganized.ResourcesReorganized;
 import videogoose.resourcesreorganized.element.block.systems.FluidPort;
 import videogoose.resourcesreorganized.systems.FluidSystemModule;
-import videogoose.resourcesreorganized.utils.ReflectionUtils;
 
 public class FluidPortDialog extends DialogInput {
 
@@ -51,13 +51,14 @@ public class FluidPortDialog extends DialogInput {
 		public void createPanel(SegmentPiece segmentPiece, FluidSystemModule fluidSystemModule) {
 			GUIContentPane contentPane = ((GUIDialogWindow) background).getMainContentPane();
 			contentPane.setTextBoxHeightLast(300);
-			Inventory inventory = fluidSystemModule.getInventory(segmentPiece);
+			StashInventory inventory = (StashInventory) fluidSystemModule.getInventory(segmentPiece);
 			if(inventory == null) {
 				ResourcesReorganized.getInstance().logWarning("Failed to get inventory for FluidPort!");
 				return;
 			}
-			FluidPortAnchor inputAnchor = new FluidPortAnchor(getState(), true, inventory);
-			FluidPortAnchor outputAnchor = new FluidPortAnchor(getState(), false, inventory);
+			inventory.setSlotLimit(2); // Limit to 2 slots, one for input and one for output
+			FluidPortAnchor inputAnchor = new FluidPortAnchor(getState(), true, inventory, fluidSystemModule, segmentPiece);
+			FluidPortAnchor outputAnchor = new FluidPortAnchor(getState(), false, inventory, fluidSystemModule, segmentPiece);
 			contentPane.getContent(0).attach(inputAnchor);
 			contentPane.getContent(0).attach(outputAnchor);
 			inputAnchor.orientate(ORIENTATION_LEFT | ORIENTATION_HORIZONTAL_MIDDLE);
@@ -70,25 +71,22 @@ public class FluidPortDialog extends DialogInput {
 		private final InventorySlotOverlayElement slotOverlay;
 		//Todo: Add visual indication of how much fluid is in this, something like a progress bar or something but for fluid, maybe also add a tooltip that shows the exact amount of fluid in this port and the type of fluid
 
-		public FluidPortAnchor(InputState state, boolean inputMode, Inventory inventory) {
+		public FluidPortAnchor(InputState state, boolean inputMode, StashInventory toInventory, FluidSystemModule systemModule, SegmentPiece segmentPiece) {
 			super(state);
-			try {
-				ReflectionUtils.setPrivateField(this, "inventory", inventory);
-			} catch (Exception exception) {
-				ResourcesReorganized.getInstance().logException("Failed to set inventory for FluidPortAnchor", exception);
-				throw new RuntimeException(exception);
-			}
 			slotOverlay = new InventorySlotOverlayElement(false, state, true, this) {
 				@Override
 				public void onDrop(InventorySlotOverlayElement draggable) {
-					if(getSlot() != draggable.getSlot()) {
+					Inventory fromInventory = draggable.getInventory();
+					if(fromInventory != toInventory) {
 						if(inputMode) {
 							if(FluidPort.isInputItem(draggable.getType())) {
-								// Todo: Handle emptying a filled container into system
+								super.onDrop(draggable);
+								return;
 							}
 						} else {
 							if(FluidPort.isOutputItem(draggable.getType())) {
-								// Todo: Handle filling an empty container into system
+								super.onDrop(draggable);
+								return;
 							}
 						}
 					}
@@ -96,7 +94,6 @@ public class FluidPortDialog extends DialogInput {
 					draggable.setStickyDrag(false);
 					draggable.setDraggingCount(0);
 					draggable.reset();
-
 				}
 			};
 			slotOverlay.onInit();

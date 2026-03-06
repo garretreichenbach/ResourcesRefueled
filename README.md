@@ -97,7 +97,7 @@ All values are set in `config/ResourcesRefueled/config.yml` on the server.
 | `condenser_base_output` | `4`     | Bonus Heliogen Plasma per cycle at proximity 1.0 next to a normal star             |
 | `condenser_proximity_scale` | `true`  | If false, proximity is treated as 1.0 (star class bonus only, no positioning game) |
 | `ftl_fuel_per_sector` | `0.0`   | Canisters consumed per sector of jump distance (feature disabled by default)       |
-| `fuel_per_canister` | `100.0` | Fluid units represented by one filled canister when drawing from a tank            |
+| `capacity_per_canister` | `100.0` | Fluid units represented by one filled canister when drawing from a tank            |
 | `ftl_unfueled_cooldown_multiplier` | `3.0`   | FTL cooldown multiplier for underfueled jumps                                      |
 | `fluid_level_per_explosion` | —       | Fluid units per explosion event on tank destruction                                |
 | `max_fluid_explosion_radius` | —       | Maximum explosion radius on a fully loaded tank                                    |

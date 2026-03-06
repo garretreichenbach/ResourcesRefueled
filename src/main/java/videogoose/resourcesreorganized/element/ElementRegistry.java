@@ -11,8 +11,7 @@ import videogoose.resourcesreorganized.element.block.systems.FluidPort;
 import videogoose.resourcesreorganized.element.block.systems.FluidTank;
 import videogoose.resourcesreorganized.element.block.systems.HeliogenCondenser;
 import videogoose.resourcesreorganized.element.block.systems.HeliogenRefinery;
-import videogoose.resourcesreorganized.element.item.FluidCanisterEmpty;
-import videogoose.resourcesreorganized.element.item.HeliogenCanister;
+import videogoose.resourcesreorganized.element.item.FluidCanister;
 import videogoose.resourcesreorganized.element.item.HeliogenPlasma;
 
 /**
@@ -21,8 +20,7 @@ import videogoose.resourcesreorganized.element.item.HeliogenPlasma;
 public enum ElementRegistry {
 	//Items
 	HELIOGEN_PLASMA(new HeliogenPlasma()),
-	FLUID_CANISTER_EMPTY(new FluidCanisterEmpty()),
-	HELIOGEN_CANISTER(new HeliogenCanister()),
+	FLUID_CANISTER(new FluidCanister()),
 
 	//Item network blocks
 //	CONVERYOR_BELT(new ConveyorBelt()),
@@ -90,7 +88,7 @@ public enum ElementRegistry {
 	}
 
 	public static boolean canInteractWithFluid(short id) {
-		return id == FLUID_TANK.getId() || id == HELIOGEN_CONDENSER.getId() || id == HELIOGEN_REFINERY.getId() || id == MAGMATIC_EXTRACTOR.id || id == VAPOR_SIPHON.id;
+		return id == FLUID_TANK.getId() || id == FLUID_PORT.getId() || id == HELIOGEN_CONDENSER.getId() || id == HELIOGEN_REFINERY.getId() || id == MAGMATIC_EXTRACTOR.id || id == VAPOR_SIPHON.id;
 	}
 
 	public static boolean isFluidTransportPipeInteractable(short id) {
