@@ -8,7 +8,7 @@ import videogoose.resourcesreorganized.element.ElementRegistry;
 import static org.ithirahad.resourcesresourced.industry.RRSRecipeManager.comp;
 
 /**
- * Registers all ResourcesRefueled block assembly recipes into RRS's Block Assembler.
+ * Registers all ResourcesReorganized block assembly recipes into RRS's Block Assembler.
  * <p>
  * Listens for {@link RRSRecipeAddEvent}, which RRS fires at the end of its own
  * recipe pass. This guarantees that BLOCK_FACTORY_INDEX is initialised and all
@@ -29,7 +29,7 @@ public class RecipeManager {
 			registerPipeRecipes();
 			registerHeliogenRecipes();
 		} catch(Exception e) {
-			ResourcesReorganized.getInstance().logException("[ResourcesRefueled] Failed to register block assembly recipes", e);
+			ResourcesReorganized.getInstance().logException("[ResourcesReorganized] Failed to register block assembly recipes", e);
 		}
 	}
 

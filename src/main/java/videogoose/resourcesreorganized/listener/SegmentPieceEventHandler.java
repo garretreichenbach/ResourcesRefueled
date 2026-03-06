@@ -18,6 +18,7 @@ import org.schema.game.common.data.element.ElementCollection;
 import org.schema.game.common.data.player.PlayerState;
 import org.schema.game.common.data.world.Segment;
 import videogoose.resourcesreorganized.element.ElementRegistry;
+import videogoose.resourcesreorganized.gui.FluidPortDialog;
 import videogoose.resourcesreorganized.manager.ConfigManager;
 import videogoose.resourcesreorganized.systems.FluidSystemModule;
 
@@ -82,8 +83,14 @@ public class SegmentPieceEventHandler implements SegmentPieceAddListener, Segmen
 	public void onInteract(SegmentPiece segmentPiece, PlayerState playerState, PlayerInteractionControlManager playerInteractionControlManager) {
 		//I really wish I could use a switch statement here but Java doesn't allow switching on non-constant values
 		if(!playerState.isOnServer()) {
-			if(segmentPiece.getType() == ElementRegistry.FLUID_PORT.getId()) {
-
+			if(segmentPiece.getSegmentController() instanceof ManagedUsableSegmentController<?>) {
+				ManagedUsableSegmentController<?> controller = (ManagedUsableSegmentController<?>) segmentPiece.getSegmentController();
+				if(segmentPiece.getType() == ElementRegistry.FLUID_PORT.getId()) {
+					if(controller.getManagerContainer().getModMCModule(ElementRegistry.FLUID_TANK.getId()) instanceof FluidSystemModule) {
+						FluidSystemModule fluidSystemModule = (FluidSystemModule) controller.getManagerContainer().getModMCModule(ElementRegistry.FLUID_TANK.getId());
+						(new FluidPortDialog(segmentPiece, fluidSystemModule)).activate();
+					}
+				}
 			}
 		}
 	}

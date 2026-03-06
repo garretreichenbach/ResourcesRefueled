@@ -45,7 +45,7 @@ public class HeliogenCondenser extends Block {
 			BlockConfig.addRecipe(ElementRegistry.HELIOGEN_PLASMA.getInfo(), BlockConfig.customFactories.get(blockInfo.id), 20, // bake time in ticks
 					new FactoryResource(1, anbaricId), new FactoryResource(1, parsyneId));
 		} catch(Exception e) {
-			ResourcesReorganized.getInstance().logException("[ResourcesRefueled] Failed to register Heliogen Condenser recipe", e);
+			ResourcesReorganized.getInstance().logException("[ResourcesReorganized] Failed to register Heliogen Condenser recipe", e);
 		}
 	}
 

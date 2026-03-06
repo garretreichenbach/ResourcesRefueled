@@ -42,11 +42,11 @@ public class StellarFuelManager {
 
 		if(saved.isEmpty()) {
 			PersistentObjectUtil.addObject(mod.getSkeleton(), new StellarFuelSourcesContainer());
-			mod.logInfo("[ResourcesRefueled] No existing Heliogen fuel data found — starting fresh.");
+			mod.logInfo("[ResourcesReorganized] No existing Heliogen fuel data found — starting fresh.");
 			return;
 		}
 
-		mod.logInfo("[ResourcesRefueled] Restoring Heliogen fuel data from previous session...");
+		mod.logInfo("[ResourcesReorganized] Restoring Heliogen fuel data from previous session...");
 		container = new StellarFuelSourcesContainer();
 		try {
 			persistenceContainer = (StellarFuelSourcesContainer) saved.get(0);
@@ -57,13 +57,13 @@ public class StellarFuelManager {
 				// so timestamps are reset to now (time offline doesn't count toward regen).
 				container.getMap().putAll(persistenceContainer.getMap());
 				container.afterDeserialize();
-				mod.logInfo("[ResourcesRefueled] Loaded " + container.size() + " Heliogen fuel well(s).");
+				mod.logInfo("[ResourcesReorganized] Loaded " + container.size() + " Heliogen fuel well(s).");
 			}
 			// Ensure the persistence slot holds our reference
 			saved.clear();
 			saved.add(persistenceContainer);
 		} catch(Exception e) {
-			mod.logException("[ResourcesRefueled] Failed to load Heliogen fuel data — starting fresh. " + "Wells will be regenerated on demand.", e);
+			mod.logException("[ResourcesReorganized] Failed to load Heliogen fuel data — starting fresh. " + "Wells will be regenerated on demand.", e);
 			container = new StellarFuelSourcesContainer();
 			persistenceContainer = new StellarFuelSourcesContainer();
 		}
@@ -83,7 +83,7 @@ public class StellarFuelManager {
 	public static void saveFuelData() {
 		ResourcesReorganized mod = ResourcesReorganized.getInstance();
 		try {
-			mod.logInfo("[ResourcesRefueled] Saving Heliogen fuel data...");
+			mod.logInfo("[ResourcesReorganized] Saving Heliogen fuel data...");
 
 			// Snapshot: only keep suppliers with accumulated fuel
 			persistenceContainer.getMap().clear();
@@ -102,12 +102,12 @@ public class StellarFuelManager {
 
 			if(!persistenceContainer.getMap().isEmpty()) {
 				PersistentObjectUtil.save(mod.getSkeleton());
-				mod.logInfo("[ResourcesRefueled] Saved " + persistenceContainer.size() + " active Heliogen fuel well(s).");
+				mod.logInfo("[ResourcesReorganized] Saved " + persistenceContainer.size() + " active Heliogen fuel well(s).");
 			} else {
-				mod.logInfo("[ResourcesRefueled] No active Heliogen fuel wells to save.");
+				mod.logInfo("[ResourcesReorganized] No active Heliogen fuel wells to save.");
 			}
 		} catch(Exception e) {
-			mod.logException("[ResourcesRefueled] Failed to save Heliogen fuel data.", e);
+			mod.logException("[ResourcesReorganized] Failed to save Heliogen fuel data.", e);
 		}
 	}
 

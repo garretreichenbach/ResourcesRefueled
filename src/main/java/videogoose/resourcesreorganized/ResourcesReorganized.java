@@ -52,7 +52,7 @@ public final class ResourcesReorganized extends StarMod {
 			RecipeManager.registerRecipes();
 			logInfo("Elements registered successfully");
 		} catch(Exception e) {
-			logException("[ResourcesRefueled] Failed to register elements — mod may not function correctly", e);
+			logException("[ResourcesReorganized] Failed to register elements — mod may not function correctly", e);
 		}
 	}
 
@@ -65,9 +65,30 @@ public final class ResourcesReorganized extends StarMod {
 
 	}
 
+	@Override
+	public void logInfo(String message) {
+		super.logInfo("[ResourcesReorganized] " + message);
+	}
+
+	@Override
+	public void logWarning(String message) {
+		super.logWarning("[ResourcesReorganized] " + message);
+	}
+
+	@Override
+	public void logException(String message, Exception exception) {
+		super.logException("[ResourcesReorganized] " + message, exception);
+	}
+
+	@Override
+	public void logFatal(String message, Exception exception) {
+		onDisable(); //Attempt to save fuel data and cache data before crashing, since a fatal error likely means the mod is in a broken state and continuing to run could cause further issues
+		super.logFatal("[ResourcesReorganized] " + message, exception);
+	}
+
 	public void logDebug(String message) {
 		if(ConfigManager.isDebugMode()) {
-			logInfo("[DEBUG] " + message);
+			logMessage("[DEBUG]: [ResourcesReorganized] " + message);
 		}
 	}
 }

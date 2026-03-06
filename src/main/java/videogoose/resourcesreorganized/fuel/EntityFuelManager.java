@@ -60,11 +60,11 @@ public final class EntityFuelManager {
 
 		if(saved.isEmpty()) {
 			PersistentObjectUtil.addObject(mod.getSkeleton(), new EntityFuelCacheContainer());
-			mod.logInfo("[ResourcesRefueled] No existing entity fuel cache data found — starting fresh.");
+			mod.logInfo("[ResourcesReorganized] No existing entity fuel cache data found — starting fresh.");
 			return;
 		}
 
-		mod.logInfo("[ResourcesRefueled] Restoring entity fuel cache data from previous session...");
+		mod.logInfo("[ResourcesReorganized] Restoring entity fuel cache data from previous session...");
 		container = new EntityFuelCacheContainer();
 		try {
 			persistenceContainer = (EntityFuelCacheContainer) saved.get(0);
@@ -73,10 +73,10 @@ public final class EntityFuelManager {
 			} else {
 				container.getMap().putAll(persistenceContainer.getMap());
 				container.afterDeserialize();
-				mod.logInfo("[ResourcesRefueled] Loaded " + container.size() + " entity fuel cache(s).");
+				mod.logInfo("[ResourcesReorganized] Loaded " + container.size() + " entity fuel cache(s).");
 			}
 		} catch(Exception e) {
-			mod.logException("[ResourcesRefueled] Failed to load entity fuel cache data — starting fresh.", e);
+			mod.logException("[ResourcesReorganized] Failed to load entity fuel cache data — starting fresh.", e);
 			container = new EntityFuelCacheContainer();
 			persistenceContainer = new EntityFuelCacheContainer();
 		}
@@ -93,7 +93,7 @@ public final class EntityFuelManager {
 	public static void saveCacheData() {
 		ResourcesReorganized mod = ResourcesReorganized.getInstance();
 		try {
-			mod.logInfo("[ResourcesRefueled] Saving entity fuel cache data...");
+			mod.logInfo("[ResourcesReorganized] Saving entity fuel cache data...");
 
 			persistenceContainer.clear();
 			for(Map.Entry<String, EntityFuelCache> entry : container.getMap().entrySet()) {
@@ -110,12 +110,12 @@ public final class EntityFuelManager {
 
 			if(!persistenceContainer.getMap().isEmpty()) {
 				PersistentObjectUtil.save(mod.getSkeleton());
-				mod.logInfo("[ResourcesRefueled] Saved " + persistenceContainer.size() + " entity fuel cache(s).");
+				mod.logInfo("[ResourcesReorganized] Saved " + persistenceContainer.size() + " entity fuel cache(s).");
 			} else {
-				mod.logInfo("[ResourcesRefueled] No active entity fuel caches to save.");
+				mod.logInfo("[ResourcesReorganized] No active entity fuel caches to save.");
 			}
 		} catch(Exception e) {
-			mod.logException("[ResourcesRefueled] Failed to save entity fuel cache data.", e);
+			mod.logException("[ResourcesReorganized] Failed to save entity fuel cache data.", e);
 		}
 	}
 

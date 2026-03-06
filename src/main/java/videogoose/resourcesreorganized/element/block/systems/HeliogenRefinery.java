@@ -55,7 +55,7 @@ public class HeliogenRefinery extends Block {
 			product.output = new FactoryResource[]{new FactoryResource(PLASMA_PER_CANISTER, filledId)};
 			condensingRecipe.recipeProducts = new FixedRecipeProduct[]{product};
 		} catch(Exception e) {
-			ResourcesReorganized.getInstance().logException("[ResourcesRefueled] Failed to register Heliogen Refinery recipe", e);
+			ResourcesReorganized.getInstance().logException("[ResourcesReorganized] Failed to register Heliogen Refinery recipe", e);
 		}
 	}
 

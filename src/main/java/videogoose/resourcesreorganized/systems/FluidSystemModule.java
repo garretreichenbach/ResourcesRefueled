@@ -5,12 +5,14 @@ import api.network.PacketWriteBuffer;
 import api.utils.game.module.util.SystemModule;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import org.schema.common.util.linAlg.Vector3i;
+import org.schema.game.common.controller.ManagedUsableSegmentController;
 import org.schema.game.common.controller.SegmentController;
 import org.schema.game.common.controller.elements.ManagerContainer;
 import org.schema.game.common.data.SegmentPiece;
 import org.schema.game.common.data.element.Element;
 import org.schema.game.common.data.element.ElementCollection;
 import org.schema.game.common.data.element.ElementKeyMap;
+import org.schema.game.common.data.player.inventory.Inventory;
 import org.schema.schine.graphicsengine.core.Timer;
 import org.schema.schine.graphicsengine.forms.BoundingBox;
 import videogoose.resourcesreorganized.ResourcesReorganized;
@@ -830,6 +832,14 @@ public class FluidSystemModule extends SystemModule {
 		}
 
 		return totalFlow;
+	}
+
+	public Inventory getInventory(SegmentPiece segmentPiece) {
+		if(segmentPiece.getSegmentController() instanceof ManagedUsableSegmentController<?>) {
+			ManagedUsableSegmentController<?> controller = (ManagedUsableSegmentController<?>) segmentPiece.getSegmentController();
+			return controller.getManagerContainer().getInventory(segmentPiece.getAbsoluteIndex());
+		}
+		return null;
 	}
 
 	/** One placed {@code FLUID_TANK} block — contributes capacity to its network. */

@@ -74,7 +74,7 @@ public class StellarFuelSupplier implements Serializable {
 		// Debug mode: allow claiming for testing anywhere without affecting the pool.
 		try {
 			if(ConfigManager.isDebugMode()) {
-				ResourcesReorganized.getInstance().logInfo("[ResourcesRefueled] Debug mode: granting " + requestedAmount + " Heliogen units regardless of proximity.");
+				ResourcesReorganized.getInstance().logInfo("[ResourcesReorganized] Debug mode: granting " + requestedAmount + " Heliogen units regardless of proximity.");
 				return requestedAmount;
 			}
 		} catch(Exception ignored) { }

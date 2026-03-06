@@ -68,7 +68,7 @@ public class SolarCondenserTickListener implements FactoryManufactureListener {
 			// Void system — no star, no condensation reaction possible. Cancel the cycle.
 			// Unless debug mode is enabled, in which case allow testing anywhere.
 			if(!ConfigManager.isDebugMode()) return false;
-			ResourcesReorganized.getInstance().logInfo("[ResourcesRefueled] Debug mode enabled: allowing Helio­gen Condenser cycle in void system " + sector);
+			ResourcesReorganized.getInstance().logInfo("[ResourcesReorganized] Debug mode enabled: allowing Helio­gen Condenser cycle in void system " + sector);
 		}
 
 		return true;
@@ -97,7 +97,7 @@ public class SolarCondenserTickListener implements FactoryManufactureListener {
 		if(supplier == null) {
 			if(!ConfigManager.isDebugMode()) return; // void system — blocked in onPreManufacture but guard here too
 			// Debug mode: fake a normal star so testing is easy away from stars.
-			ResourcesReorganized.getInstance().logInfo("[ResourcesRefueled] Debug mode: applying condenser bonus as if near a normal star at " + sector);
+			ResourcesReorganized.getInstance().logInfo("[ResourcesReorganized] Debug mode: applying condenser bonus as if near a normal star at " + sector);
 			// treat as normal star
 			float effectiveProximity = 1.0f;
 			int bonus = (int) Math.floor(ConfigManager.getCondenserBaseOutput() * effectiveProximity * REGEN_RATE_BASELINE * quantity);

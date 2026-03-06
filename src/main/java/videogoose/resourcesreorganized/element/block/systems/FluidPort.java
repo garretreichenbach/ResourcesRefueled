@@ -3,6 +3,7 @@ package videogoose.resourcesreorganized.element.block.systems;
 import api.config.BlockConfig;
 import api.utils.element.Blocks;
 import videogoose.resourcesreorganized.ResourcesReorganized;
+import videogoose.resourcesreorganized.element.ElementRegistry;
 import videogoose.resourcesreorganized.element.block.Block;
 
 public class FluidPort extends Block {
@@ -23,6 +24,7 @@ public class FluidPort extends Block {
 		blockInfo.maxHitPointsFull = Blocks.STORAGE.getInfo().maxHitPointsFull;
 		blockInfo.shoppable = true;
 		blockInfo.blended = true;
+		blockInfo.inventoryType = 6; //Other
 	}
 
 	@Override
@@ -33,5 +35,13 @@ public class FluidPort extends Block {
 	@Override
 	public void initResources() {
 
+	}
+
+	public static boolean isInputItem(short id) {
+		return id == ElementRegistry.HELIOGEN_PLASMA.getId() || id == ElementRegistry.HELIOGEN_CANISTER.getId();
+	}
+
+	public static boolean isOutputItem(short id) {
+		return id == ElementRegistry.FLUID_CANISTER_EMPTY.getId();
 	}
 }

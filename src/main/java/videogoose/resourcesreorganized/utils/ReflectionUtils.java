@@ -20,14 +20,14 @@ public class ReflectionUtils {
 		return method.invoke(null, args);
 	}
 
-	public static Object getPrivateField(Class<?> clazz, Object instance, String fieldName) throws Exception {
-		Field field = clazz.getDeclaredField(fieldName);
+	public static Object getPrivateField(Object instance, String fieldName) throws Exception {
+		Field field = instance.getClass().getDeclaredField(fieldName);
 		field.setAccessible(true);
 		return field.get(instance);
 	}
 
-	public static void setPrivateField(Class<?> clazz, Object instance, String fieldName, Object value) throws Exception {
-		Field field = clazz.getDeclaredField(fieldName);
+	public static void setPrivateField(Object instance, String fieldName, Object value) throws Exception {
+		Field field = instance.getClass().getDeclaredField(fieldName);
 		field.setAccessible(true);
 		field.set(instance, value);
 	}
@@ -87,10 +87,10 @@ public class ReflectionUtils {
 			}
 		}
 
-		System.out.println("[SpaceGuard] [Reflection] Looking for constructor with types: " + Arrays.toString(paramTypes));
-		System.out.println("[SpaceGuard] [Reflection] Available constructors in " + enumClass.getName() + ":");
+		System.out.println("[ResourcesReorganized] [Reflection] Looking for constructor with types: " + Arrays.toString(paramTypes));
+		System.out.println("[ResourcesReorganized] [Reflection] Available constructors in " + enumClass.getName() + ":");
 		for(Constructor<?> c : enumClass.getDeclaredConstructors()) {
-			System.out.println("[SpaceGuard] [Reflection]   - " + c);
+			System.out.println("[ResourcesReorganized] [Reflection]   - " + c);
 		}
 
 		// Try to find the constructor
@@ -99,7 +99,7 @@ public class ReflectionUtils {
 			constructor = enumClass.getDeclaredConstructor(paramTypes);
 		} catch(NoSuchMethodException e) {
 			// If exact match fails, try with boxed Integer type instead of int
-			System.out.println("[SpaceGuard] [Reflection] Exact match failed, trying with boxed types...");
+			System.out.println("[ResourcesReorganized] [Reflection] Exact match failed, trying with boxed types...");
 			Class<?>[] boxedParamTypes = new Class<?>[paramTypes.length];
 			boxedParamTypes[0] = paramTypes[0]; // String stays String
 			boxedParamTypes[1] = paramTypes[1]; // int stays int
@@ -114,16 +114,16 @@ public class ReflectionUtils {
 			}
 
 			try {
-				System.out.println("[SpaceGuard] [Reflection] Trying with boxed types: " + Arrays.toString(boxedParamTypes));
+				System.out.println("[ResourcesReorganized] [Reflection] Trying with boxed types: " + Arrays.toString(boxedParamTypes));
 				constructor = enumClass.getDeclaredConstructor(boxedParamTypes);
 			} catch(NoSuchMethodException e2) {
-				System.out.println("[SpaceGuard] [Reflection] Boxed match also failed, searching all constructors...");
+				System.out.println("[ResourcesReorganized] [Reflection] Boxed match also failed, searching all constructors...");
 				Constructor<?>[] constructors = enumClass.getDeclaredConstructors();
 				for(Constructor<?> c : constructors) {
 					Class<?>[] ctorParams = c.getParameterTypes();
 					if(ctorParams.length == paramTypes.length) {
 						// Found a constructor with matching parameter count
-						System.out.println("[SpaceGuard] [Reflection] Using constructor with matching parameter count: " + c);
+						System.out.println("[ResourcesReorganized] [Reflection] Using constructor with matching parameter count: " + c);
 						constructor = c;
 						break;
 					}
@@ -142,7 +142,7 @@ public class ReflectionUtils {
 		args[1] = ordinal;
 		System.arraycopy(params, 0, args, 2, params.length);
 
-		System.out.println("[SpaceGuard] [Reflection] Creating enum instance with args: " + Arrays.toString(args));
+		System.out.println("[ResourcesReorganized] [Reflection] Creating enum instance with args: " + Arrays.toString(args));
 
 		// Create the new enum instance
 		Object newEnumInstance;
@@ -161,14 +161,14 @@ public class ReflectionUtils {
 			Method newInstanceMethod = constructorAccessor.getClass().getDeclaredMethod("newInstance", Object[].class);
 			newInstanceMethod.setAccessible(true); // CRITICAL: Must set accessible before invoke
 			newEnumInstance = newInstanceMethod.invoke(constructorAccessor, new Object[]{args});
-			System.out.println("[SpaceGuard] [Reflection] Used ReflectionFactory to create enum instance");
+			System.out.println("[ResourcesReorganized] [Reflection] Used ReflectionFactory to create enum instance");
 		} catch(Exception reflectionFactoryException) {
-			System.err.println("[SpaceGuard] [Reflection] ReflectionFactory failed: " + reflectionFactoryException.getMessage());
+			System.err.println("[ResourcesReorganized] [Reflection] ReflectionFactory failed: " + reflectionFactoryException.getMessage());
 			reflectionFactoryException.printStackTrace();
 
 			// Method 2: Try setting override field to bypass access checks
 			try {
-				System.out.println("[SpaceGuard] [Reflection] Trying to bypass enum check via override field...");
+				System.out.println("[ResourcesReorganized] [Reflection] Trying to bypass enum check via override field...");
 
 				// Try to access the override field
 				Field overrideField = null;
@@ -179,7 +179,7 @@ public class ReflectionUtils {
 					try {
 						overrideField = AccessibleObject.class.getDeclaredField("override");
 					} catch(NoSuchFieldException nsfe2) {
-						System.err.println("[SpaceGuard] [Reflection] Could not find override field");
+						System.err.println("[ResourcesReorganized] [Reflection] Could not find override field");
 					}
 				}
 
@@ -189,9 +189,9 @@ public class ReflectionUtils {
 				}
 
 				newEnumInstance = constructor.newInstance(args);
-				System.out.println("[SpaceGuard] [Reflection] Successfully bypassed enum check");
+				System.out.println("[ResourcesReorganized] [Reflection] Successfully bypassed enum check");
 			} catch(Exception directException) {
-				System.err.println("[SpaceGuard] [Reflection] All methods failed!");
+				System.err.println("[ResourcesReorganized] [Reflection] All methods failed!");
 				directException.printStackTrace();
 				throw new RuntimeException("Failed to create enum instance for " + name, directException);
 			}
@@ -221,25 +221,25 @@ public class ReflectionUtils {
 			Method putObjectMethod = unsafeClass.getDeclaredMethod("putObject", Object.class, long.class, Object.class);
 			putObjectMethod.invoke(unsafe, staticFieldBase, offset, newValues);
 
-			System.out.println("[SpaceGuard] [Reflection] Used Unsafe to set static final $VALUES field");
+			System.out.println("[ResourcesReorganized] [Reflection] Used Unsafe to set static final $VALUES field");
 		} catch(Exception unsafeException) {
 			// Fallback: try removing final modifier and setting directly
-			System.out.println("[SpaceGuard] [Reflection] Unsafe method failed, trying to remove final modifier...");
-			System.err.println("[SpaceGuard] [Reflection] Unsafe error: " + unsafeException.getMessage());
+			System.out.println("[ResourcesReorganized] [Reflection] Unsafe method failed, trying to remove final modifier...");
+			System.err.println("[ResourcesReorganized] [Reflection] Unsafe error: " + unsafeException.getMessage());
 			unsafeException.printStackTrace();
 			try {
 				Field modifiersField = Field.class.getDeclaredField("modifiers");
 				modifiersField.setAccessible(true);
 				modifiersField.setInt(valuesField, valuesField.getModifiers() & ~java.lang.reflect.Modifier.FINAL);
 				valuesField.set(null, newValues);
-				System.out.println("[SpaceGuard] [Reflection] Successfully modified final field by removing FINAL modifier");
+				System.out.println("[ResourcesReorganized] [Reflection] Successfully modified final field by removing FINAL modifier");
 			} catch(Exception modifierException) {
-				System.err.println("[SpaceGuard] [Reflection] Failed to set $VALUES field: " + modifierException.getMessage());
+				System.err.println("[ResourcesReorganized] [Reflection] Failed to set $VALUES field: " + modifierException.getMessage());
 				throw new RuntimeException("Could not set $VALUES field for enum injection", modifierException);
 			}
 		}
 
-		System.out.println("[SpaceGuard] [Reflection] Successfully injected enum value: " + name);
+		System.out.println("[ResourcesReorganized] [Reflection] Successfully injected enum value: " + name);
 
 		// Return the newly created enum instance
 		return newEnumInstance;

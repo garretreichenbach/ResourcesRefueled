@@ -43,7 +43,7 @@ public class StellarFuelSourcesContainer implements Serializable {
 
 		StellarFuelSupplier supplier = new StellarFuelSupplier(cls);
 		systemMap.put(new Vector3i(systemPos), supplier); // copy key — Vector3i is mutable
-		ResourcesReorganized.getInstance().logInfo("[ResourcesRefueled] Created StellarFuelSupplier for system " + systemPos + " (" + cls + ", regen=" + regenRate + "/s)");
+		ResourcesReorganized.getInstance().logInfo("[ResourcesReorganized] Created StellarFuelSupplier for system " + systemPos + " (" + cls + ", regen=" + regenRate + "/s)");
 		return supplier;
 	}
 
@@ -95,7 +95,7 @@ public class StellarFuelSourcesContainer implements Serializable {
 				return sheet.systemClass;
 			}
 		} catch(Exception e) {
-			ResourcesReorganized.getInstance().logInfo("[ResourcesRefueled] Could not resolve SystemClass for " + systemPos + ", using NORMAL.");
+			ResourcesReorganized.getInstance().logInfo("[ResourcesReorganized] Could not resolve SystemClass for " + systemPos + ", using NORMAL.");
 		}
 		return SystemClass.NORMAL;
 	}
