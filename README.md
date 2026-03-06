@@ -1,6 +1,9 @@
-# ResourcesRefueled
+# Resources Reorganized
 
-A StarMade addon for **[Resources ReSourced](https://starmadedock.net/content/resources-resourced.8292/)** by VideoGoose that adds a stellar fuel economy to the game. Resource extraction and FTL travel now require **Heliogen** — a volatile plasma fuel distilled directly from starlight — tying your industrial output and exploration range to your proximity to, and relationship with, the stars around you.
+**Resources Reorganized** is a mod aimed at improving general item and fluid logistics across the game (bulk storage,
+portable containers, pipe networks, and fluid-aware systems). The mod remains fully compatible with Resources
+ReSourced (RRS) and extends it with a generic fluid system, portable canisters, and a small Heliogen fuel chain as a
+demonstration of the system.
 
 ---
 
@@ -13,127 +16,86 @@ A StarMade addon for **[Resources ReSourced](https://starmadedock.net/content/re
 
 ## Overview
 
-RRS already makes resources scarce and zone-dependent. ResourcesRefueled adds a second layer: **energy**. Stars are now active participants in the economy. The closer you are willing to operate to a star — and the more exotic that star is — the more Heliogen you can produce. But stars are dangerous, and compressed plasma is volatile, so the logistics chain matters.
+This project evolved from a single-purpose Heliogen fuel addon into a reusable, generic fluids-and-logistics toolkit:
+
+- Generic fluid storage and pipe primitives (tanks, pipes, pumps, valves, filters)
+- Unified portable canisters that carry any fluid via per-slot JSON metadata (no separate item ids per fluid)
+- Networked tank components with structural capacity, per-network fluid type and level
+- Fluid ports to bridge inventories and networks (manual fill/drain via inventory slots)
+- Volatility flags on fluids so some fluids (e.g. Heliogen) are explosive when stored in tanks
+
+The Heliogen chain (condenser → plasma → refinery → filled canisters) demonstrates the system and integrates with
+extractors and FTL as fuel, but the core plumbing is generic and can host additional fluids and use-cases.
 
 ---
 
-## Heliogen Production Chain
+## Key Features Implemented
 
-```
-Star radiation
-      │
-      ▼
-[Heliogen Condenser]  ←  Anbaric Vapor + Parsyne Plasma
-  (station block,          (from RRS extraction)
-   yield scales with
-   star proximity)
-      │
-      ▼
- Heliogen Plasma
-  (raw item)
-      │
-      ▼
-[Heliogen Refinery]
-      │
-      ▼
- Heliogen Canister (Filled)   ──►  FTL drives
-                               └►  Resource extractors
-```
-
-**Heliogen Plasma** is produced by the **Heliogen Condenser**, a station block that catalyses a reaction between Anbaric Vapor and Parsyne Plasma using ambient stellar radiation. The yield multiplier scales linearly with the station's proximity to the local star — a condenser placed three sectors from a supergiant produces far more than one orbiting a dim dwarf. Stars vary in output by type, so scouting for energetic or exotic systems is rewarded.
-
-**Heliogen Plasma** is then refined in the **Heliogen Refinery** into portable **Heliogen Canisters**, or pumped directly into **Heliogen Tanks** for bulk storage.
-
----
-
-## Fuel Consumption
-
-### Resource Extractors
-RRS's Vapor Siphons and Magmatic Extractors always run at full base efficiency — Heliogen is not required to operate them. However, if filled Heliogen Canisters are present in the extractor's linked inventory, each completed extraction cycle will consume some and produce bonus resources on top of the base output (configurable, default +50% per canister consumed). Spent canisters are returned as empties in the same inventory update, ready to be transported back to a refinery.
-
-This makes Heliogen a worthwhile investment for established operations without punishing players who haven't built a fuel supply chain yet.
-
-### FTL Jumps
-FTL drives consume Heliogen proportional to jump distance. The fuel priority order is:
-1. **Heliogen Tanks** onboard (preferred — silent, bulk)
-2. **Heliogen Canisters** in ship inventory (fallback — with warning)
-3. **Neither** — jump still executes, but only reaches as far as available fuel allows. The drive calculates the furthest reachable sector along the intended heading and jumps there instead.
-
----
-
-## Fluid Storage & Pipe Network
-
-Heliogen can be stored in bulk using **Heliogen Tanks** — pressurised multiblock storage units. Each tank block contributes capacity to the system. Tank blocks are volatile: destroying a loaded tank while it contains fuel triggers an explosion proportional to the stored volume. Ship builders are advised to treat tank placement with care, especially on smaller vessels.
-
-A basic **pipe network** (Fluid Pipes, Pumps, Valves, and Filters) allows Heliogen to be routed between tanks, refineries, and consuming systems. Full pipe transport logic is planned for a future release; pipe blocks are registerable and buildable now.
+- Generic `FluidTank` block and structural pipe primitives (`FluidPipe`, `PipePump`, `PipeValve`, `PipeFilter`)
+- Unified `FluidCanister` item: a single item type whose contents (fluid id, amount, capacity) are stored in per-slot
+  JSON metadata. The GUI shows the fluid and amount in the item tooltip.
+- `FluidMeta` central utility: stores fluid-type properties (e.g. `isVolatile`) and provides canister metadata
+  writers/readers. The `HeliogenPlasma` element registers itself as volatile.
+- `FluidSystemModule`: module that partitions placed tank/pipe blocks into connected `FluidNetwork`s, stores per-network
+  `fluidId` and `fluidLevel`, and handles placement/removal topologically.
+- `FluidPort` block & GUI: two-slot inventory for manual canister in/out; server-side tick logic transfers exactly one
+  canister worth of fluid between the inventory and the adjacent network when active.
+- `ExtractorFuelListener` and `EntityFuelManager`: extractors and FTL jumps can draw fuel from tank networks and
+  fallback to filled canisters in inventory; a virtualised per-entity cache persists fuel state across unloads and
+  saves.
+- Explosion safety: tanks only trigger explosions on destruction when the network's fluid is marked volatile.
+- HUD improvements: tank HUD now shows fluid name, capacity, current volume, and a volatile indicator if applicable;
+  pumps show per-block flow rate and network aggregate flow.
 
 ---
 
 ## Crafting
 
-All blocks are assembled in RRS's **Block Assembler** using standard RRS components:
-
-| Block | Key Components |
-|---|---|
-| Heliogen Condenser | Parsyne Amplifying Focus, Anbaric Distortion Coil, Crystal Energy Focus |
-| Heliogen Refinery | Thermyn Power Charge, Standard Circuitry |
-| Heliogen Refinery Controller | Metal Sheets, Standard Circuitry, Crystal Panel |
-| Heliogen Tank | Metal Sheets, Anbaric Distortion Coils |
-| Fluid Pipe | Metal Frame, Metal Sheet |
-| Fluid Pump | Metal Frame, Metal Sheet, Energy Cell, Standard Circuitry |
-| Fluid Valve | Metal Frame, Metal Sheet, Standard Circuitry |
-| Fluid Filter | Metal Frame, Standard Circuitry, Crystal Panel |
+Most blocks are assembled using RRS components as before; the refinery compresses raw plasma into filled canisters. The
+refinery recipe now consumes a plain `FluidCanister` (empty, metadata-less) and produces a filled `FluidCanister` (
+metadata stamped by the refinery logic).
 
 ---
 
 ## Configuration
 
-All values are set in `config/ResourcesRefueled/config.yml` on the server.
+All values live in the mod config (server-side). Notable keys:
 
-| Key | Default | Description                                                                        |
-|---|---------|------------------------------------------------------------------------------------|
-| `fuel_cost_per_strength_unit` | `0.5`   | Fuel units consumed per unit of base output per cycle                              |
-| `fueled_extraction_bonus` | `0.5`   | Bonus output fraction added per unit of fuel consumed                              |
-| `condenser_base_output` | `4`     | Bonus Heliogen Plasma per cycle at proximity 1.0 next to a normal star             |
-| `condenser_proximity_scale` | `true`  | If false, proximity is treated as 1.0 (star class bonus only, no positioning game) |
-| `ftl_fuel_per_sector` | `0.0`   | Canisters consumed per sector of jump distance (feature disabled by default)       |
-| `capacity_per_canister` | `100.0` | Fluid units represented by one filled canister when drawing from a tank            |
-| `ftl_unfueled_cooldown_multiplier` | `3.0`   | FTL cooldown multiplier for underfueled jumps                                      |
-| `fluid_level_per_explosion` | —       | Fluid units per explosion event on tank destruction                                |
-| `max_fluid_explosion_radius` | —       | Maximum explosion radius on a fully loaded tank                                    |
-| `fluid_explosion_damage` | —       | Base damage per explosion event                                                    |
+- `fuel_cost_per_strength_unit` — fuel units per extractor strength unit
+- `fueled_extraction_bonus` — bonus output fraction applied when fuel is consumed
+- `condenser_base_output` — condenser bonus at proximity 1.0
+- `ftl_fuel_per_sector` — canisters per sector for FTL (0 by default)
+- `capacity_per_canister` — fluid units represented by one filled canister
+- `capacity_per_tank` — fluid units contributed by each placed tank block
+- `fluid_level_per_explosion`, `max_fluid_explosion_radius`, `fluid_explosion_damage` — tank explosion tuning
+
+(See `config/ResourcesRefueled/config.yml` on a server for full keys and documentation.)
 
 ---
 
-## Architecture Notes (for developers)
+## Developer Notes
 
-- **Heliogen supply** is tracked per star system in `StellarFuelSupplier`, keyed by system `Vector3i`. Suppliers are created lazily on first access — no galaxy-gen hook required. Works on pre-existing worlds.
-- **Extractor fuel** is resolved once per tick in `MixinExtractorTickListener.onPreManufacture`, combining `FluidTankSystemModule` level and inventory canister count into a single `FuelTickState.availableFuelUnits` value. Both the strength override listener and `onProduceItem` read from this — no inventory access after `onPreManufacture`.
-- **Enhancer disconnect** — `ElementRegistry.doOverwrites()` removes `FACTORY_ENHANCER` from the `controlling`/`controlledBy` lists of Vapor Siphon and Magmatic Extractor at block config load time. Enhancers still define the extraction ceiling; Heliogen fuel is what drives output toward it.
-- **Fluid tanks** use the `FluidTank` generic block class. Adding a new fluid type requires only a new `ElementRegistry`
-  entry — the tank module, explosion logic, and future pipe routing all work generically.
-- **Virtualised entity fuel cache** — `EntityFuelManager` keeps a persistent `EntityFuelCache` per entity (keyed by UID)
-  so that fuel reads and drains are valid even when the entity is not loaded. `syncFromLive` snapshots the live entity
-  into the cache; `writeBackToLive` flushes consumed fuel back to the actual tank and inventory using a canister-count
-  delta to avoid unnecessary item scanning.
-- **Persistence** mirrors RRS's `PersistentObjectUtil` pattern exactly for both stellar supply (`StellarFuelManager`)
-  and entity fuel caches (`EntityFuelManager`): load on `ServerInitializeEvent`, save on `WorldSaveEvent` and
-  `onDisable`.
-- **Upcoming — pipe-network topology** — `FluidTankSystemModule` will be refactored to replace the inherited `blocks`
-  array with two explicit maps: `tankSegments` (one entry per placed `FLUID_TANK` block, drives capacity) and
-  `pipeSegments` (one entry per placed pipe-network block). `onBlockPlaced`/`onBlockRemoved` hooks will maintain both
-  maps and trigger structural capacity recalculation. See TODO §8 for the full task breakdown.
+- The core of the fluid system is generic. Adding new fluids is a two-step process:
+  1. Register a new item element for the raw fluid (e.g. `MyCoolant`)
+  2. If the fluid is volatile, call `FluidMeta.registerVolatile(itemInfo.id)` in the element's `postInitData()`
+
+- Portable canisters are a single item type whose contents are stored per-slot; `FluidMeta` exposes helpers to stamp and
+  read that metadata.
+
+- `FluidSystemModule` replaces the old inherited `blocks` array with explicit `tankSegments` and `pipeSegments` maps;
+  networks are recalculated on place/remove and persist their `fluidId` and `fluidLevel`.
+
+- The mod was renamed to "Resources Reorganized" to reflect a broader goal of improving item and logistics systems. The
+  codebase retains historical names in some places for compatibility with saved worlds; new code and documentation use
+  the Resources Reorganized name.
 
 ---
 
-## Planned
+## Roadmap (short)
 
-- **Fluid pipe-network refactor** — replace `FluidTankSystemModule.blocks` with `tankSegments` / `pipeSegments` maps;
-  structural capacity derived from block count; `onBlockPlaced` / `onBlockRemoved` hooks maintain topology (TODO §8.1–8.7)
-- **Pipe transport logic** — directional `FluidPump` flow, `FluidValve` gating, `FluidFilter` whitelist enforcement (TODO §8.8)
-- **Fluid fill visualisation** — per-block world-space fill overlay rendered inside each tank block, scaled to the network's fill fraction (TODO §9)
-- **Tank connected textures** — Fluid Tank faces automatically swap to the correct CTM variant (exposed plate vs. flange/port) based on adjacent tanks and pipe inlets, using StarMade's native `ConnectedTextureUnit` API and a 47-variant sprite sheet (TODO §10). Pipe blocks use 3D mesh models instead.
-- Custom textures and icons for all blocks and items
+- Pipe transport behaviour: directional pump flow, valve gating, filter whitelists
+- Client-side tank fill visualisation (in-world fluid overlays)
+- Connected-texture support for tank faces (CTM)
+- UI polish and localization for canister/tank tooltips
 
-
-
+---
