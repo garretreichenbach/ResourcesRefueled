@@ -6,7 +6,7 @@ package videogoose.resourcesrefueled.element.item;
  * Produced at the Heliogen Refinery from raw Heliogen Plasma.
  * <p>
  * Heavier than an empty canister due to the compressed plasma inside.
- * The fuel consumption logic in MixinExtractorTickListener and the ShipJumpEngageEvent
+ * The fuel consumption logic in ExtractorFuelListener and the ShipJumpEngageEvent
  * listener checks for this item in cargo by ID.
  */
 public class HeliogenCanisterFilled extends Item {

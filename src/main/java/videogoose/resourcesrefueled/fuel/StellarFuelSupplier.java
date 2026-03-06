@@ -1,16 +1,18 @@
 package videogoose.resourcesrefueled.fuel;
 
 import org.ithirahad.resourcesresourced.universe.starsystem.SystemClass;
+import videogoose.resourcesrefueled.ResourcesRefueled;
+import videogoose.resourcesrefueled.manager.ConfigManager;
 
 import java.io.Serializable;
 
 /**
  * Represents a star's passive Heliogen supply well. Parallel to RRS's PassiveResourceSupplier.
- *
+ * <p>
  * Every star system gets one StellarFuelSupplier keyed by system Vector3i.
  * The regen rate is derived from the system's SystemClass (star type) and is static per
  * system — proximity boosts are applied on demand at claim-time using SystemSheet.getTemperature().
- *
+ * <p>
  * Unloaded accumulation works identically to RRS: lastPassiveUpdate tracks the last
  * server-side tick, and elapsed time is applied on next access.
  */
@@ -23,7 +25,7 @@ public class StellarFuelSupplier implements Serializable {
 	public double pool;
 
 	/** Max pool size = baseRegenRate * POOL_SIZE_SECONDS seconds of regen. */
-	public static final float POOL_SIZE_SECONDS = 600f; // 10 minutes of regen
+	public static final float POOL_SIZE_SECONDS = 600.0f; // 10 minutes of regen
 
 	/**
 	 * Temperature threshold above which ships take star damage.
@@ -36,7 +38,7 @@ public class StellarFuelSupplier implements Serializable {
 
 	/** Construct a new supplier from a known SystemClass. */
 	public StellarFuelSupplier(SystemClass systemClass) {
-		this.baseRegenRate = getBaseRegenForClass(systemClass);
+		baseRegenRate = getBaseRegenForClass(systemClass);
 	}
 
 	// -------------------------------------------------------------------------
@@ -69,9 +71,17 @@ public class StellarFuelSupplier implements Serializable {
 	 * @return Actual units granted (may be less than requested if pool is low or proximity is zero).
 	 */
 	public synchronized double claimFuel(double requestedAmount, float proximityFactor) {
+		// Debug mode: allow claiming for testing anywhere without affecting the pool.
+		try {
+			if(ConfigManager.isDebugMode()) {
+				ResourcesRefueled.getInstance().logInfo("[ResourcesRefueled] Debug mode: granting " + requestedAmount + " Heliogen units regardless of proximity.");
+				return requestedAmount;
+			}
+		} catch(Exception ignored) { }
+
 		updatePassivePool(System.currentTimeMillis());
 
-		if (proximityFactor <= 0f || pool <= 0) return 0;
+		if (proximityFactor <= 0.0f || pool <= 0) return 0;
 
 		double available = pool * proximityFactor; // proximity scales effective availability
 		double granted = Math.min(requestedAmount, available);

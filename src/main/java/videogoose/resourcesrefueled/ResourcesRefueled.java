@@ -3,6 +3,7 @@ package videogoose.resourcesrefueled;
 import api.config.BlockConfig;
 import api.listener.events.controller.ClientInitializeEvent;
 import api.mod.StarMod;
+import org.schema.game.server.test.TestRegistry;
 import org.schema.schine.resource.ResourceLoader;
 import videogoose.resourcesrefueled.element.ElementRegistry;
 import videogoose.resourcesrefueled.fuel.EntityFuelManager;
@@ -11,6 +12,7 @@ import videogoose.resourcesrefueled.industry.RecipeManager;
 import videogoose.resourcesrefueled.manager.ConfigManager;
 import videogoose.resourcesrefueled.manager.EventManager;
 import videogoose.resourcesrefueled.manager.ResourceManager;
+import videogoose.resourcesrefueled.tests.systems.FluidNetworkTests;
 
 public final class ResourcesRefueled extends StarMod {
 
@@ -59,6 +61,11 @@ public final class ResourcesRefueled extends StarMod {
 	@Override
 	public void onResourceLoad(ResourceLoader loader) {
 		ResourceManager.loadResources();
+	}
+
+	@Override
+	public void onRegisterTests(TestRegistry.ModTestRegistrar registrar) {
+		registrar.register(FluidNetworkTests.class);
 	}
 
 	private void registerCommands() {

@@ -1,7 +1,7 @@
 {
   "name": "Resources Refueled",
   "author": "VideoGoose (TheDerpGamer)",
-  "description": "Adds configurable fuel systems to RRS for FTL travel.",
+  "description": "Adds configurable fuel and fluid systems to RRS for more immersive gameplay.",
   "version": "1.0.0",
   "starmade_version": "0.205.1",
   "client_mod": true,

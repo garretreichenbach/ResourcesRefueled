@@ -12,7 +12,7 @@ import org.schema.schine.network.server.ServerMessage;
 import videogoose.resourcesrefueled.element.ElementRegistry;
 import videogoose.resourcesrefueled.fuel.EntityFuelManager;
 import videogoose.resourcesrefueled.manager.ConfigManager;
-import videogoose.resourcesrefueled.systems.FluidTankSystemModule;
+import videogoose.resourcesrefueled.systems.FluidSystemModule;
 
 /**
  * Handles Heliogen fuel consumption when a ship engages its FTL drive.
@@ -39,7 +39,7 @@ public class ShipJumpFuelListener extends Listener<ShipJumpEngageEvent> {
 		Ship ship = (Ship) event.getController();
 		ShipManagerContainer shipManagerContainer = ship.getManagerContainer();
 		String uid = ship.getUniqueIdentifier();
-		FluidTankSystemModule tankModule = (FluidTankSystemModule) shipManagerContainer.getModMCModule(ElementRegistry.FLUID_TANK.getId());
+		FluidSystemModule tankModule = (FluidSystemModule) shipManagerContainer.getModMCModule(ElementRegistry.FLUID_TANK.getId());
 
 		// Collect all ship inventories for canister reconciliation on write-back.
 		Inventory[] inventories = shipManagerContainer.getInventories().values().toArray(new Inventory[0]);

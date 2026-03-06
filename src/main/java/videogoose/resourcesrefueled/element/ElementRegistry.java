@@ -1,6 +1,5 @@
 package videogoose.resourcesrefueled.element;
 
-import api.common.GameCommon;
 import api.config.BlockConfig;
 import api.utils.element.Blocks;
 import org.schema.game.common.data.element.ElementInformation;
@@ -54,13 +53,9 @@ public enum ElementRegistry {
 		ResourcesRefueled.getInstance().logDebug("Initialized element data for " + values().length + " elements");
 
 		for(ElementRegistry registry : values()) {
-			if(!GameCommon.isDedicatedServer()) {
-				registry.elementInterface.initResources();
-			}
+			registry.elementInterface.initResources();
 		}
-		if(!GameCommon.isDedicatedServer()) {
-			ResourcesRefueled.getInstance().logDebug("Initialized element resources for " + values().length + " elements");
-		}
+		ResourcesRefueled.getInstance().logDebug("Initialized element resources for " + values().length + " elements");
 
 		for(ElementRegistry registry : values()) {
 			BlockConfig.add(registry.getInfo());

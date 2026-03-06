@@ -17,6 +17,7 @@ import videogoose.resourcesrefueled.element.ElementRegistry;
 import videogoose.resourcesrefueled.fuel.StellarFuelManager;
 import videogoose.resourcesrefueled.fuel.StellarFuelSupplier;
 import videogoose.resourcesrefueled.manager.ConfigManager;
+import videogoose.resourcesrefueled.ResourcesRefueled;
 
 /**
  * Applies the star-proximity yield multiplier to the Heliogen Condenser.
@@ -65,7 +66,9 @@ public class SolarCondenserTickListener implements FactoryManufactureListener {
 		StellarFuelSupplier supplier = StellarFuelManager.getSupplierForSector(sector);
 		if(supplier == null) {
 			// Void system — no star, no condensation reaction possible. Cancel the cycle.
-			return false;
+			// Unless debug mode is enabled, in which case allow testing anywhere.
+			if(!ConfigManager.isDebugMode()) return false;
+			ResourcesRefueled.getInstance().logInfo("[ResourcesRefueled] Debug mode enabled: allowing Helio­gen Condenser cycle in void system " + sector);
 		}
 
 		return true;
@@ -88,10 +91,22 @@ public class SolarCondenserTickListener implements FactoryManufactureListener {
 		Vector3i sector = entity.getSector(new Vector3i());
 
 		float proximity = SystemSheet.getTemperature(sector);
-		if(proximity <= 0.0f) return; // at the very edge, no bonus
+		if(proximity <= 0.0f && !ConfigManager.isDebugMode()) return; // at the very edge, no bonus
 
 		StellarFuelSupplier supplier = StellarFuelManager.getSupplierForSector(sector);
-		if(supplier == null) return; // void system — blocked in onPreManufacture but guard here too
+		if(supplier == null) {
+			if(!ConfigManager.isDebugMode()) return; // void system — blocked in onPreManufacture but guard here too
+			// Debug mode: fake a normal star so testing is easy away from stars.
+			ResourcesRefueled.getInstance().logInfo("[ResourcesRefueled] Debug mode: applying condenser bonus as if near a normal star at " + sector);
+			// treat as normal star
+			float effectiveProximity = 1.0f;
+			int bonus = (int) Math.floor(ConfigManager.getCondenserBaseOutput() * effectiveProximity * REGEN_RATE_BASELINE * quantity);
+			if(bonus <= 0) return;
+
+			int inventoryChange = inventory.incExistingOrNextFreeSlotWithoutException(ElementRegistry.HELIOGEN_PLASMA.getId(), bonus);
+			changeSet.add(inventoryChange);
+			return;
+		}
 
 		// Scale bonus by proximity and star class relative to a normal star.
 		float starMultiplier = supplier.getBaseRegenRate() / REGEN_RATE_BASELINE;
@@ -103,3 +118,4 @@ public class SolarCondenserTickListener implements FactoryManufactureListener {
 		changeSet.add(inventoryChange);
 	}
 }
+

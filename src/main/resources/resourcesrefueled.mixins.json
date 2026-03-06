@@ -4,9 +4,7 @@
   "package": "videogoose.resourcesrefueled.mixin",
   "compatibilityLevel": "JAVA_8",
   "target": "@env(DEFAULT)",
-  "mixins": [
-    "MixinExtractorTickListener"
-  ],
+  "mixins": [],
   "client": [],
   "server": [],
   "injectors": {

@@ -27,7 +27,7 @@ public class FluidTank extends Block {
 		blockInfo.volume = Blocks.STORAGE.getInfo().volume;
 		blockInfo.maxHitPointsFull = Blocks.STORAGE.getInfo().maxHitPointsFull;
 		blockInfo.shoppable = true;
-		blockInfo.canActivate = true;
+		blockInfo.blended = true;
 	}
 
 	@Override

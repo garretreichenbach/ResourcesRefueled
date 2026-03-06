@@ -3,11 +3,9 @@ package videogoose.resourcesrefueled.fuel;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Shared state between MixinExtractorTickListener (which writes) and
- * HarvesterEnhancerOverrideListener / onProduceItem (which read).
- * <p>
- * Kept outside the mixin class because Mixin does not allow non-private
- * static members, so cross-class sharing requires an external holder.
+ * Shared state between {@link videogoose.resourcesrefueled.listener.ExtractorFuelListener}
+ * (which writes) and {@link videogoose.resourcesrefueled.listener.HarvesterEnhancerOverrideListener}
+ * / {@code onProduceItem} (which read).
  * <p>
  * Fuel can come from two sources, resolved once per tick in onPreManufacture:
  *   1. Heliogen Canisters in the factory inventory (portable supply)
@@ -24,7 +22,7 @@ public final class FuelTickState {
 	 * Key: entity UID
 	 * Value: total available Heliogen fuel units this tick, combining tanks and canisters.
 	 *        0 = no fuel available.
-	 *        Written by MixinExtractorTickListener.onPreManufacture (inventory is live there).
+	 *        Written by ExtractorFuelListener.onPreManufacture (inventory is live there).
 	 *        Read by HarvesterEnhancerOverrideListener and onProduceItem.
 	 */
 	public static final ConcurrentHashMap<String, Double> availableFuelUnits = new ConcurrentHashMap<>();

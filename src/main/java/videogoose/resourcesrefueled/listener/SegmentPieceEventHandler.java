@@ -19,7 +19,7 @@ import org.schema.game.common.data.player.PlayerState;
 import org.schema.game.common.data.world.Segment;
 import videogoose.resourcesrefueled.element.ElementRegistry;
 import videogoose.resourcesrefueled.manager.ConfigManager;
-import videogoose.resourcesrefueled.systems.FluidTankSystemModule;
+import videogoose.resourcesrefueled.systems.FluidSystemModule;
 
 import java.util.Collections;
 import java.util.List;
@@ -30,8 +30,8 @@ public class SegmentPieceEventHandler implements SegmentPieceAddListener, Segmen
 		if(ElementRegistry.canInteractWithFluid(type) || ElementRegistry.isPipe(type)) {
 			if(server && segmentController instanceof ManagedUsableSegmentController<?>) {
 				ManagerContainer<?> container = ((ManagedUsableSegmentController<?>) segmentController).getManagerContainer();
-				if(container.getModMCModule(ElementRegistry.FLUID_TANK.getId()) instanceof FluidTankSystemModule) {
-					FluidTankSystemModule module = (FluidTankSystemModule) container.getModMCModule(ElementRegistry.FLUID_TANK.getId());
+				if(container.getModMCModule(ElementRegistry.FLUID_TANK.getId()) instanceof FluidSystemModule) {
+					FluidSystemModule module = (FluidSystemModule) container.getModMCModule(ElementRegistry.FLUID_TANK.getId());
 					module.onPlace(index, type);
 				}
 			}
@@ -43,8 +43,8 @@ public class SegmentPieceEventHandler implements SegmentPieceAddListener, Segmen
 		if(ElementRegistry.canInteractWithFluid(type) || ElementRegistry.isPipe(type)) {
 			if(server && segment.getSegmentController() instanceof ManagedUsableSegmentController<?>) {
 				ManagerContainer<?> container = ((ManagedUsableSegmentController<?>) segment.getSegmentController()).getManagerContainer();
-				if(container.getModMCModule(ElementRegistry.FLUID_TANK.getId()) instanceof FluidTankSystemModule) {
-					FluidTankSystemModule module = (FluidTankSystemModule) container.getModMCModule(ElementRegistry.FLUID_TANK.getId());
+				if(container.getModMCModule(ElementRegistry.FLUID_TANK.getId()) instanceof FluidSystemModule) {
+					FluidSystemModule module = (FluidSystemModule) container.getModMCModule(ElementRegistry.FLUID_TANK.getId());
 					module.onRemove(ElementCollection.getIndex4(x, y, z, type), type);
 				}
 			}
@@ -58,8 +58,8 @@ public class SegmentPieceEventHandler implements SegmentPieceAddListener, Segmen
 		if(sendableSegmentController instanceof ManagedUsableSegmentController<?>) {
 			ManagedUsableSegmentController<?> managed = (ManagedUsableSegmentController<?>) sendableSegmentController;
 			ManagerContainer<?> managerContainer = managed.getManagerContainer();
-			if(managerContainer.getModMCModule(ElementRegistry.FLUID_TANK.getId()) instanceof FluidTankSystemModule) {
-				FluidTankSystemModule tankModule = (FluidTankSystemModule) managerContainer.getModMCModule(ElementRegistry.FLUID_TANK.getId());
+			if(managerContainer.getModMCModule(ElementRegistry.FLUID_TANK.getId()) instanceof FluidSystemModule) {
+				FluidSystemModule tankModule = (FluidSystemModule) managerContainer.getModMCModule(ElementRegistry.FLUID_TANK.getId());
 				long blockIndex = segmentPiece.getAbsoluteIndex();
 				// Use the fluid level of the specific network this block belonged to,
 				// so only that network's stored fluid contributes to the explosion.
@@ -82,7 +82,7 @@ public class SegmentPieceEventHandler implements SegmentPieceAddListener, Segmen
 	public void onInteract(SegmentPiece segmentPiece, PlayerState playerState, PlayerInteractionControlManager playerInteractionControlManager) {
 	}
 
-	private List<ModuleExplosion> createExplosionList(SegmentPiece segmentPiece, FluidTankSystemModule tankModule, long blockIndex) {
+	private List<ModuleExplosion> createExplosionList(SegmentPiece segmentPiece, FluidSystemModule tankModule, long blockIndex) {
 		int fluidLevelPerExplosion = ConfigManager.getFluidLevelPerExplosion();
 		LongList blocks = tankModule.getBlockIndicesForExplosion(blockIndex);
 		double networkFluid = tankModule.getFluidLevelForBlock(blockIndex);

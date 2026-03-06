@@ -10,6 +10,7 @@ import org.schema.game.common.controller.elements.ManagerContainer;
 import org.schema.game.common.data.SegmentPiece;
 import org.schema.game.common.data.element.Element;
 import org.schema.game.common.data.element.ElementCollection;
+import org.schema.game.common.data.element.ElementKeyMap;
 import org.schema.schine.graphicsengine.core.Timer;
 import org.schema.schine.graphicsengine.forms.BoundingBox;
 import videogoose.resourcesrefueled.ResourcesRefueled;
@@ -39,7 +40,7 @@ import java.util.*;
  * types, and fluid level. On deserialisation the maps are rebuilt from the member
  * lists and capacity is recalculated structurally.
  */
-public class FluidTankSystemModule extends SystemModule {
+public class FluidSystemModule extends SystemModule {
 
 	// =========================================================================
 	// Inner types
@@ -59,13 +60,10 @@ public class FluidTankSystemModule extends SystemModule {
 	// Fields
 	// =========================================================================
 	private final SegmentController segmentController;
-	/** The fluid type this module accepts (e.g. HELIOGEN_CANISTER_FILLED). */
-	private short fluidId;
 
-	public FluidTankSystemModule(ManagerContainer<?> managerContainer) {
+	public FluidSystemModule(ManagerContainer<?> managerContainer) {
 		super(managerContainer.getSegmentController(), managerContainer, ResourcesRefueled.getInstance(), ElementRegistry.FLUID_TANK.getId());
 		segmentController = managerContainer.getSegmentController();
-		fluidId = ElementRegistry.HELIOGEN_CANISTER_FILLED.getId();
 	}
 
 	/**
@@ -113,6 +111,9 @@ public class FluidTankSystemModule extends SystemModule {
 		double pumpRate = ConfigManager.getPumpTransferPerTick();
 		boolean anyChange = false;
 
+		// Convert tick rate to seconds for flow rate calculation (20 ticks per second)
+		float ticksPerSecond = 20.0f;
+
 		for(FluidPipeSegment seg : pipeSegments.values()) {
 			if(seg.blockType != ElementRegistry.PIPE_PUMP.getId()) continue;
 			long pumpIndex = seg.blockIndex;
@@ -128,7 +129,11 @@ public class FluidTankSystemModule extends SystemModule {
 				}
 			}
 
-			if(adjacentNets.size() < 2) continue; // nothing to pump between
+			if(adjacentNets.size() < 2) {
+				// No flow possible
+				seg.flowRate = 0;
+				continue;
+			}
 
 			// Choose a source network (has fluid) and a target network (has capacity).
 			FluidNetwork source = null;
@@ -138,16 +143,48 @@ public class FluidTankSystemModule extends SystemModule {
 				if(target == null && net.tankCapacity > net.fluidLevel) target = net;
 				if(source != null && target != null && source != target) break;
 			}
-			if(source == null || target == null || source == target) continue;
+			if(source == null || target == null || source == target) {
+				// No flow possible
+				seg.flowRate = 0;
+				continue;
+			}
+
+			// Check fluid compatibility: only pump if target is empty or matches source fluid type
+			if(target.fluidId != 0 && target.fluidId != source.fluidId) {
+				// Incompatible fluid types - cannot pump
+				seg.flowRate = 0;
+				if(ConfigManager.isDebugMode()) {
+					ResourcesRefueled.getInstance().logInfo("[FluidNetwork] Pump @ " + pumpIndex + " blocked: incompatible fluids (source: " + source.fluidId + ", target: " + target.fluidId + ")");
+				}
+				continue;
+			}
 
 			double transferable = Math.min(pumpRate, Math.min(source.fluidLevel, Math.max(0.0, target.tankCapacity - target.fluidLevel)));
-			if(transferable <= 0) continue;
+			if(transferable <= 0) {
+				seg.flowRate = 0;
+				continue;
+			}
 
 			source.fluidLevel = Math.max(0.0, source.fluidLevel - transferable);
 			target.fluidLevel = Math.min(target.tankCapacity, target.fluidLevel + transferable);
+
+			// Transfer fluid type from source to target (if target was empty)
+			if(target.fluidId == 0) {
+				target.fluidId = source.fluidId;
+			}
+
+			// Clear fluid ID if source becomes empty
+			if(source.fluidLevel <= 0) {
+				source.fluidId = 0;
+				source.fluidLevel = 0;
+			}
+
+			// Calculate flow rate in L/s (positive means pumping)
+			seg.flowRate = (float)(transferable * ticksPerSecond);
+
 			anyChange = true;
 			if(ConfigManager.isDebugMode()) {
-				ResourcesRefueled.getInstance().logInfo("[FluidNetwork] Pump @ " + pumpIndex + " moved " + transferable + " units from net{" + source.memberIndices.size() + "} to net{" + target.memberIndices.size() + "}");
+				ResourcesRefueled.getInstance().logInfo("[FluidNetwork] Pump @ " + pumpIndex + " moved " + transferable + " units from net{" + source.memberIndices.size() + "} to net{" + target.memberIndices.size() + "} (flow: " + seg.flowRate + " L/s)");
 			}
 		}
 
@@ -183,11 +220,28 @@ public class FluidTankSystemModule extends SystemModule {
 			return; // not a fluid-network block
 		}
 
+		// Pump/valve/filter blocks act as network boundaries — they are tracked in
+		// pipeSegments but are NOT members of any FluidNetwork. They connect distinct
+		// networks without merging them, so that the pump logic can see two separate
+		// networks on each side.
+		boolean isDevice = isNetworkDevice(blockType);
+		if(isDevice) {
+			// Don't touch the network topology at all — just register the block.
+			flagUpdatedData();
+			if(ConfigManager.isDebugMode()) {
+				ResourcesRefueled.getInstance().logInfo("[FluidNetwork] Placed device " + blockType + " @ " + index + " (boundary, not merged)");
+			}
+			return;
+		}
+
 		// Collect all networks that are adjacent to this new block.
+		// Do NOT cross device blocks — they are boundaries.
 		Set<Long> neighbours = faceAdjacentIndices(index);
 		List<FluidNetwork> adjacentNetworks = new ArrayList<>();
 		for(FluidNetwork net : networks) {
 			for(long nb : neighbours) {
+				// Skip device blocks as connectivity bridges.
+				if(pipeSegments.containsKey(nb) && isNetworkDevice(pipeSegments.get(nb).blockType)) continue;
 				if(net.memberIndices.contains(nb)) {
 					adjacentNetworks.add(net);
 					break;
@@ -198,20 +252,63 @@ public class FluidTankSystemModule extends SystemModule {
 		// Merge all adjacent networks + the new block into a single network.
 		FluidNetwork merged = new FluidNetwork();
 		merged.memberIndices.add(index);
+
+		// Determine the fluid ID for the merged network:
+		// - If no adjacent networks have fluid, merged network starts empty (fluidId = 0)
+		// - If any adjacent network has fluid, use that fluid type
+		// - If multiple networks have different fluid types, use the one with the most fluid
+		short mergedFluidId = 0;
+		double maxFluidLevel = 0;
+
 		for(FluidNetwork net : adjacentNetworks) {
 			merged.memberIndices.addAll(net.memberIndices);
-			merged.fluidLevel += net.fluidLevel;
+
+			// Track which fluid type to use based on which network has the most fluid
+			if(net.fluidLevel > maxFluidLevel) {
+				maxFluidLevel = net.fluidLevel;
+				mergedFluidId = net.fluidId;
+			}
+
+			// Only add fluid if it matches the dominant fluid type (or if merged is still empty)
+			if(mergedFluidId == 0 || net.fluidId == mergedFluidId || net.fluidId == 0) {
+				merged.fluidLevel += net.fluidLevel;
+			} else {
+				// Incompatible fluid types - discard the lesser fluid
+				if(ConfigManager.isDebugMode()) {
+					ResourcesRefueled.getInstance().logInfo("[FluidNetwork] Discarding " + net.fluidLevel + "L of fluid type " + net.fluidId + " due to incompatibility with dominant type " + mergedFluidId);
+				}
+			}
+
 			networks.remove(net);
 		}
+
+		merged.fluidId = mergedFluidId;
 		recalculateNetworkCapacity(merged);
-		// Clamp in case merged capacity is somehow less than combined fluid (shouldn't happen on add, but be safe).
+		// Clamp fluid level to new capacity
 		merged.fluidLevel = Math.min(merged.fluidLevel, merged.tankCapacity);
+
+		// If we lost fluid due to capacity reduction, clear the fluid ID if empty
+		if(merged.fluidLevel <= 0) {
+			merged.fluidId = 0;
+			merged.fluidLevel = 0;
+		}
+
 		networks.add(merged);
 
 		flagUpdatedData();
 		if(ConfigManager.isDebugMode()) {
-			ResourcesRefueled.getInstance().logInfo("[FluidNetwork] Placed " + blockType + " @ " + index + " — networks: " + networks.size() + ", merged capacity: " + merged.tankCapacity);
+			ResourcesRefueled.getInstance().logInfo("[FluidNetwork] Placed " + blockType + " @ " + index + " — networks: " + networks.size() + ", merged capacity: " + merged.tankCapacity + ", fluid: " + merged.fluidLevel + "L of type " + merged.fluidId);
 		}
+	}
+
+	/**
+	 * Returns true if the given block type is a "device" (pump/valve/filter) that
+	 * acts as a network boundary rather than a passive conduit.
+	 */
+	private boolean isNetworkDevice(short blockType) {
+		return blockType == ElementRegistry.PIPE_PUMP.getId()
+				|| blockType == ElementRegistry.PIPE_VALVE.getId()
+				|| blockType == ElementRegistry.PIPE_FILTER.getId();
 	}
 
 	/**
@@ -308,6 +405,7 @@ public class FluidTankSystemModule extends SystemModule {
 		}
 
 		double savedFluid = ownerNetwork.fluidLevel;
+		short savedFluidId = ownerNetwork.fluidId;
 		networks.remove(ownerNetwork);
 		ownerNetwork.memberIndices.remove(index);
 
@@ -329,6 +427,15 @@ public class FluidTankSystemModule extends SystemModule {
 		for(FluidNetwork net : newNetworks) {
 			double fraction = (totalNewCapacity > 0) ? net.tankCapacity / totalNewCapacity : 1.0 / newNetworks.size();
 			net.fluidLevel = Math.min(savedFluid * fraction, net.tankCapacity);
+
+			// Preserve the fluid ID from the original network
+			net.fluidId = savedFluidId;
+
+			// Clear fluid ID if the network has no fluid
+			if(net.fluidLevel <= 0) {
+				net.fluidId = 0;
+				net.fluidLevel = 0;
+			}
 		}
 
 		networks.addAll(newNetworks);
@@ -352,7 +459,9 @@ public class FluidTankSystemModule extends SystemModule {
 
 	/**
 	 * Partitions a set of block indices into connected components using BFS.
-	 * A block is connected to its face-adjacent neighbours that are also in the set.
+	 * A block is connected to its face-adjacent neighbours that are also in the set,
+	 * <em>unless</em> the neighbour is a network device (pump/valve/filter), which acts
+	 * as a boundary and does not propagate connectivity.
 	 *
 	 * @param members The full set of indices to partition (not modified).
 	 * @return One {@link FluidNetwork} per connected component.
@@ -365,6 +474,12 @@ public class FluidTankSystemModule extends SystemModule {
 			FluidNetwork component = new FluidNetwork();
 			Queue<Long> queue = new ArrayDeque<>();
 			long seed = unvisited.iterator().next();
+			// Device blocks themselves are not included in any network.
+			FluidPipeSegment seedSeg = pipeSegments.get(seed);
+			if(seedSeg != null && isNetworkDevice(seedSeg.blockType)) {
+				unvisited.remove(seed);
+				continue; // skip — device blocks are not part of networks
+			}
 			queue.add(seed);
 			unvisited.remove(seed);
 
@@ -373,12 +488,15 @@ public class FluidTankSystemModule extends SystemModule {
 				component.memberIndices.add(current);
 				for(long nb : faceAdjacentIndices(current)) {
 					if(unvisited.contains(nb)) {
+						// Don't cross device blocks.
+						FluidPipeSegment nbSeg = pipeSegments.get(nb);
+						if(nbSeg != null && isNetworkDevice(nbSeg.blockType)) continue;
 						unvisited.remove(nb);
 						queue.add(nb);
 					}
 				}
 			}
-			result.add(component);
+			if(!component.memberIndices.isEmpty()) result.add(component);
 		}
 		return result;
 	}
@@ -401,9 +519,11 @@ public class FluidTankSystemModule extends SystemModule {
 
 	@Override
 	public void onTagSerialize(PacketWriteBuffer buffer) throws IOException {
-		buffer.writeShort(fluidId);
+		// Note: FluidPipeSegment.flowRate is not serialized as it's transient data
+		// that gets recalculated every tick in handle()
 		buffer.writeInt(networks.size());
 		for(FluidNetwork net : networks) {
+			buffer.writeShort(net.fluidId);
 			buffer.writeDouble(net.fluidLevel);
 			buffer.writeInt(net.memberIndices.size());
 			for(long idx : net.memberIndices) {
@@ -424,7 +544,6 @@ public class FluidTankSystemModule extends SystemModule {
 
 	@Override
 	public void onTagDeserialize(PacketReadBuffer buffer) throws IOException {
-		fluidId = buffer.readShort();
 		tankSegments.clear();
 		pipeSegments.clear();
 		networks.clear();
@@ -432,6 +551,7 @@ public class FluidTankSystemModule extends SystemModule {
 		int networkCount = buffer.readInt();
 		for(int n = 0; n < networkCount; n++) {
 			FluidNetwork net = new FluidNetwork();
+			net.fluidId = buffer.readShort();
 			net.fluidLevel = buffer.readDouble();
 			int memberCount = buffer.readInt();
 			for(int m = 0; m < memberCount; m++) {
@@ -473,12 +593,25 @@ public class FluidTankSystemModule extends SystemModule {
 		return "Fluid Tank System Module";
 	}
 
+	/**
+	 * Returns the fluid ID of the first network with fluid, or 0 if all networks are empty.
+	 * This is a legacy method for compatibility with older code that expects a single fluid type.
+	 */
 	public short getFluidId() {
-		return fluidId;
+		for(FluidNetwork net : networks) {
+			if(net.fluidId != 0) return net.fluidId;
+		}
+		return 0;
 	}
 
+	/**
+	 * Sets the fluid ID for all networks. This is a legacy method for compatibility.
+	 * Generally, fluid IDs should be set per-network during fill operations.
+	 */
 	public void setFluidId(short fluidId) {
-		this.fluidId = fluidId;
+		for(FluidNetwork net : networks) {
+			net.fluidId = fluidId;
+		}
 		flagUpdatedData();
 	}
 
@@ -536,6 +669,12 @@ public class FluidTankSystemModule extends SystemModule {
 			double take = net.fluidLevel * fraction;
 			net.fluidLevel -= take;
 			drained += take;
+
+			// Clear fluid ID if network becomes empty
+			if(net.fluidLevel <= 0) {
+				net.fluidId = 0;
+				net.fluidLevel = 0;
+			}
 		}
 		flagUpdatedData();
 		return drained;
@@ -622,6 +761,77 @@ public class FluidTankSystemModule extends SystemModule {
 		return buildBoundingBox(getBlockIndices());
 	}
 
+	public String getFluidName() {
+		// Collect unique fluid types
+		Set<Short> fluidTypes = new HashSet<>();
+		for(FluidNetwork net : networks) {
+			if(net.fluidId != 0) {
+				fluidTypes.add(net.fluidId);
+			}
+		}
+
+		if(fluidTypes.isEmpty()) {
+			return "Empty";
+		} else if(fluidTypes.size() == 1) {
+			short fluidId = fluidTypes.iterator().next();
+			if(ElementKeyMap.isValidType(fluidId)) {
+				return ElementKeyMap.getInfo(fluidId).getName();
+			}
+			return "Unknown";
+		} else {
+			// Multiple fluid types
+			return "Mixed (" + fluidTypes.size() + " types)";
+		}
+	}
+
+	/**
+	 * Returns the flow rate in L/s for the pump at the given block index.
+	 * Returns 0 if the block is not a pump or has no flow.
+	 * Positive values indicate active pumping (outflow), negative would indicate reverse flow.
+	 */
+	public float getFlow(long blockIndex) {
+		FluidPipeSegment seg = pipeSegments.get(blockIndex);
+		if(seg == null || seg.blockType != ElementRegistry.PIPE_PUMP.getId()) {
+			return 0;
+		}
+		return seg.flowRate;
+	}
+
+	/**
+	 * Returns the flow rate for any block in a network. If the block is a pump, returns its flow.
+	 * If the block is part of a network with pumps, returns the cumulative flow of all pumps in that network.
+	 * Returns 0 if no flow.
+	 */
+	public float getFlowForNetwork(long blockIndex) {
+		// First check if it's a pump itself
+		FluidPipeSegment seg = pipeSegments.get(blockIndex);
+		if(seg != null && seg.blockType == ElementRegistry.PIPE_PUMP.getId()) {
+			return seg.flowRate;
+		}
+
+		// Find the network this block belongs to
+		FluidNetwork network = null;
+		for(FluidNetwork net : networks) {
+			if(net.memberIndices.contains(blockIndex)) {
+				network = net;
+				break;
+			}
+		}
+
+		if(network == null) return 0;
+
+		// Calculate cumulative flow from all pumps in this network
+		float totalFlow = 0;
+		for(long memberIdx : network.memberIndices) {
+			FluidPipeSegment pSeg = pipeSegments.get(memberIdx);
+			if(pSeg != null && pSeg.blockType == ElementRegistry.PIPE_PUMP.getId()) {
+				totalFlow += pSeg.flowRate;
+			}
+		}
+
+		return totalFlow;
+	}
+
 	/** One placed {@code FLUID_TANK} block — contributes capacity to its network. */
 	public static final class FluidTankSegment {
 		public final long blockIndex;
@@ -637,10 +847,13 @@ public class FluidTankSystemModule extends SystemModule {
 	public static final class FluidPipeSegment {
 		public final long blockIndex;
 		public final short blockType;
+		/** Flow rate in L/s for pumps. Positive = outflow from source, Negative = inflow to target, 0 = no flow */
+		public float flowRate;
 
 		public FluidPipeSegment(long blockIndex, short blockType) {
 			this.blockIndex = blockIndex;
 			this.blockType = blockType;
+			this.flowRate = 0;
 		}
 	}
 
@@ -656,17 +869,30 @@ public class FluidTankSystemModule extends SystemModule {
 		public final Set<Long> memberIndices = new HashSet<>();
 		/** Current stored fluid units. Always ≤ {@link #tankCapacity}. */
 		public double fluidLevel;
-		/** Cached capacity — recalculated by {@link FluidTankSystemModule#recalculateNetworkCapacity}. */
+		/** Cached capacity — recalculated by {@link FluidSystemModule#recalculateNetworkCapacity}. */
 		public double tankCapacity;
+		/** The fluid type this network contains (e.g. HELIOGEN_CANISTER_FILLED). 0 = empty/no fluid. */
+		public short fluidId;
 
 		/** True when this network has no blocks at all. */
 		public boolean isEmpty() {
 			return memberIndices.isEmpty();
 		}
+
+		public String getFluidName() {
+			if(fluidId == 0) {
+				return "Empty";
+			} else if(ElementKeyMap.isValidType(fluidId)) {
+				return ElementKeyMap.getInfo(fluidId).getName();
+			} else {
+				return "Unknown";
+			}
+		}
 	}
 
 	/**
-	 * Pulls up to {@code amount} fluid units from the network that contains the pump at {@code pumpIndex}.
+	 * Pulls up to {@code amount} fluid units from the first adjacent network of the pump
+	 * at {@code pumpIndex} that has available fluid.
 	 * <p>
 	 * This is a low-level API used by pump machinery: callers should ensure the pump
 	 * is active/powered and that {@code pumpIndex} refers to a pump block. Returns the
@@ -677,20 +903,29 @@ public class FluidTankSystemModule extends SystemModule {
 		FluidPipeSegment seg = pipeSegments.get(pumpIndex);
 		if(seg == null || seg.blockType != ElementRegistry.PIPE_PUMP.getId()) return 0; // not a pump we manage
 
-		for(FluidNetwork net : networks) {
-			if(net.memberIndices.contains(pumpIndex)) {
-				double available = net.fluidLevel;
-				double taken = Math.min(available, amount);
-				net.fluidLevel = Math.max(0.0, net.fluidLevel - taken);
-				flagUpdatedData();
-				return taken;
+		for(long nb : faceAdjacentIndices(pumpIndex)) {
+			for(FluidNetwork net : networks) {
+				if(net.memberIndices.contains(nb) && net.fluidLevel > 0) {
+					double taken = Math.min(net.fluidLevel, amount);
+					net.fluidLevel = Math.max(0.0, net.fluidLevel - taken);
+
+					// Clear fluid ID if network becomes empty
+					if(net.fluidLevel <= 0) {
+						net.fluidId = 0;
+						net.fluidLevel = 0;
+					}
+
+					flagUpdatedData();
+					return taken;
+				}
 			}
 		}
 		return 0;
 	}
 
 	/**
-	 * Inserts up to {@code amount} fluid units into the network that contains the pump at {@code pumpIndex}.
+	 * Inserts up to {@code amount} fluid units into the first adjacent network of the pump
+	 * at {@code pumpIndex} that has free capacity.
 	 * Returns the amount actually inserted (may be less than requested if the network is full).
 	 */
 	public double pumpInsert(long pumpIndex, double amount) {
@@ -698,15 +933,20 @@ public class FluidTankSystemModule extends SystemModule {
 		FluidPipeSegment seg = pipeSegments.get(pumpIndex);
 		if(seg == null || seg.blockType != ElementRegistry.PIPE_PUMP.getId()) return 0; // not a pump we manage
 
-		for(FluidNetwork net : networks) {
-			if(net.memberIndices.contains(pumpIndex)) {
-				double free = Math.max(0.0, net.tankCapacity - net.fluidLevel);
-				double added = Math.min(free, amount);
-				net.fluidLevel += added;
-				flagUpdatedData();
-				return added;
+		double added = 0.0;
+		for(long nb : faceAdjacentIndices(pumpIndex)) {
+			for(FluidNetwork net : networks) {
+				if(net.memberIndices.contains(nb)) {
+					double free = Math.max(0.0, net.tankCapacity - net.fluidLevel);
+					if(free <= 0) continue;
+					added = Math.min(free, amount);
+					net.fluidLevel += added;
+				}
 			}
 		}
-		return 0;
+		if(added > 0) {
+			flagUpdatedData();
+		}
+		return added;
 	}
 }

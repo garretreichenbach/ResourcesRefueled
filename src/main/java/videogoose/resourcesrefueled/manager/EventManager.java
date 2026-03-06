@@ -2,6 +2,7 @@ package videogoose.resourcesrefueled.manager;
 
 import api.listener.Listener;
 import api.listener.events.controller.ServerInitializeEvent;
+import api.listener.events.draw.RegisterWorldDrawersEvent;
 import api.listener.events.entity.ShipJumpEngageEvent;
 import api.listener.events.register.ManagerContainerRegisterEvent;
 import api.listener.events.world.WorldSaveEvent;
@@ -11,11 +12,8 @@ import org.ithirahad.resourcesresourced.events.HarvesterStrengthUpdateEvent;
 import videogoose.resourcesrefueled.ResourcesRefueled;
 import videogoose.resourcesrefueled.fuel.EntityFuelManager;
 import videogoose.resourcesrefueled.fuel.StellarFuelManager;
-import videogoose.resourcesrefueled.listener.HarvesterEnhancerOverrideListener;
-import videogoose.resourcesrefueled.listener.SegmentPieceEventHandler;
-import videogoose.resourcesrefueled.listener.ShipJumpFuelListener;
-import videogoose.resourcesrefueled.listener.SolarCondenserTickListener;
-import videogoose.resourcesrefueled.systems.FluidTankSystemModule;
+import videogoose.resourcesrefueled.listener.*;
+import videogoose.resourcesrefueled.systems.FluidSystemModule;
 
 public class EventManager {
 
@@ -28,6 +26,14 @@ public class EventManager {
 		FastListenerCommon.segmentPieceActivateListeners.add(segmentPieceEventHandler);
 		FastListenerCommon.segmentPiecePlayerInteractListeners.add(segmentPieceEventHandler);
 		FastListenerCommon.factoryManufactureListeners.add(new SolarCondenserTickListener());
+		FastListenerCommon.factoryManufactureListeners.add(new ExtractorFuelListener());
+
+		StarLoader.registerListener(RegisterWorldDrawersEvent.class, new Listener<RegisterWorldDrawersEvent>() {
+			@Override
+			public void onEvent(RegisterWorldDrawersEvent event) {
+				GraphicsManager.registerDrawers(event);
+			}
+		}, instance);
 
 		// Replace vanilla enhancer bonus on extractors with Heliogen-fuel-based boost
 		StarLoader.registerListener(HarvesterStrengthUpdateEvent.class, new HarvesterEnhancerOverrideListener(), instance);
@@ -36,7 +42,7 @@ public class EventManager {
 
 			@Override
 			public void onEvent(ManagerContainerRegisterEvent event) {
-				FluidTankSystemModule tankModule = new FluidTankSystemModule(event.getContainer());
+				FluidSystemModule tankModule = new FluidSystemModule(event.getContainer());
 				event.addModMCModule(tankModule);
 
 				// Sync the virtualised fuel cache from the live entity state now that it's loaded.

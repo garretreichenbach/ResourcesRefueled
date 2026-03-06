@@ -2,6 +2,7 @@ package videogoose.resourcesrefueled.element.block.pipes;
 
 import api.config.BlockConfig;
 import api.utils.element.Blocks;
+import org.schema.game.client.view.cubes.shapes.BlockStyle;
 import videogoose.resourcesrefueled.ResourcesRefueled;
 import videogoose.resourcesrefueled.element.block.Block;
 
@@ -23,6 +24,11 @@ public class PipeValve extends Block {
 		blockInfo.canActivate = true;
 		blockInfo.shoppable = true;
 		blockInfo.inventoryGroup = "FluidPipes";
+		blockInfo.blockStyle = BlockStyle.SPRITE;
+		blockInfo.blended = true;
+		blockInfo.drawOnlyInBuildMode = true;
+		//Todo: Custom model for this, for now just use the regular pipe model
+		blockInfo.lodShapeString = Blocks.YELLOW_PAINT.getInfo().lodShapeString;
 	}
 
 	@Override
@@ -32,13 +38,6 @@ public class PipeValve extends Block {
 
 	@Override
 	public void initResources() {
-		//Todo: Custom model for this, for now just use the regular pipe model
-		blockInfo.lodShapeStyle = Blocks.YELLOW_PAINT.getInfo().lodShapeStyle;
-		blockInfo.lodActivationAnimationStyle = Blocks.YELLOW_PAINT.getInfo().lodActivationAnimationStyle;
-		blockInfo.lodCollision = Blocks.YELLOW_PAINT.getInfo().lodCollision;
-		blockInfo.lodCollisionPhysical = Blocks.YELLOW_PAINT.getInfo().lodCollisionPhysical;
-		blockInfo.lodShapeString = Blocks.YELLOW_PAINT.getInfo().lodShapeString;
-		blockInfo.lodUseDetailCollision = Blocks.YELLOW_PAINT.getInfo().lodUseDetailCollision;
-		blockInfo.cubeCubeCollision = Blocks.YELLOW_PAINT.getInfo().cubeCubeCollision;
+
 	}
 }

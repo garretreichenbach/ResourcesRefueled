@@ -5,7 +5,7 @@ import org.schema.game.common.data.player.inventory.Inventory;
 import videogoose.resourcesrefueled.ResourcesRefueled;
 import videogoose.resourcesrefueled.element.ElementRegistry;
 import videogoose.resourcesrefueled.manager.ConfigManager;
-import videogoose.resourcesrefueled.systems.FluidTankSystemModule;
+import videogoose.resourcesrefueled.systems.FluidSystemModule;
 import videogoose.resourcesrefueled.utils.InventoryUtils;
 
 import java.util.ArrayList;
@@ -147,10 +147,10 @@ public final class EntityFuelManager {
 	 * writeback is only triggered if fuel is actually consumed after this point.
 	 *
 	 * @param uid            Entity unique identifier.
-	 * @param tankModule     The entity's {@link FluidTankSystemModule}, or {@code null}.
+	 * @param tankModule     The entity's {@link FluidSystemModule}, or {@code null}.
 	 * @param canisterCount  Number of filled Heliogen Canisters in the factory inventory.
 	 */
-	public static void syncFromLive(String uid, FluidTankSystemModule tankModule, int canisterCount) {
+	public static void syncFromLive(String uid, FluidSystemModule tankModule, int canisterCount) {
 		EntityFuelCache cache = getOrCreate(uid);
 
 		if(tankModule != null && tankModule.getFluidId() == ElementRegistry.HELIOGEN_CANISTER_FILLED.getId()) {
@@ -200,7 +200,7 @@ public final class EntityFuelManager {
 	 * @param tankModule  Live tank module, or {@code null}.
 	 * @param inventories All inventories belonging to the entity (may be empty array or null).
 	 */
-	public static void writeBackToLive(String uid, FluidTankSystemModule tankModule, Inventory... inventories) {
+	public static void writeBackToLive(String uid, FluidSystemModule tankModule, Inventory... inventories) {
 		EntityFuelCache cache = container.get(uid);
 		if(cache == null || !cache.dirty) return;
 

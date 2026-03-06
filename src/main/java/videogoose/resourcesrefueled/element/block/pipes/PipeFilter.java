@@ -2,6 +2,7 @@ package videogoose.resourcesrefueled.element.block.pipes;
 
 import api.config.BlockConfig;
 import api.utils.element.Blocks;
+import org.schema.game.client.view.cubes.shapes.BlockStyle;
 import videogoose.resourcesrefueled.ResourcesRefueled;
 import videogoose.resourcesrefueled.element.block.Block;
 
@@ -13,7 +14,7 @@ public class PipeFilter extends Block {
 
 	@Override
 	public void initData() {
-		blockInfo = BlockConfig.newElement(ResourcesRefueled.getInstance(), name, new short[] {0, 0, 0, 0, 0, 0});
+		blockInfo = BlockConfig.newElement(ResourcesRefueled.getInstance(), name, new short[]{0, 0, 0, 0, 0, 0});
 		blockInfo.type = Blocks.PIPE.getInfo().type;
 		blockInfo.mass = Blocks.PIPE.getInfo().mass * 1.3f;
 		blockInfo.price = Blocks.PIPE.getInfo().price * 2;
@@ -23,20 +24,20 @@ public class PipeFilter extends Block {
 		blockInfo.canActivate = true;
 		blockInfo.shoppable = true;
 		blockInfo.inventoryGroup = "FluidPipes";
+		blockInfo.blockStyle = BlockStyle.SPRITE;
+		blockInfo.blended = true;
+		blockInfo.drawOnlyInBuildMode = true;
+		//Todo: Custom model for this, for now just use the regular pipe model
+		blockInfo.lodShapeString = Blocks.RED_PAINT.getInfo().lodShapeString;
 	}
 
 	@Override
-	public void postInitData() {}
+	public void postInitData() {
+	}
 
 	@Override
 	public void initResources() {
-		//Todo: Custom model for this, for now just use the regular pipe model
-		blockInfo.lodShapeStyle = Blocks.RED_PAINT.getInfo().lodShapeStyle;
-		blockInfo.lodActivationAnimationStyle = Blocks.RED_PAINT.getInfo().lodActivationAnimationStyle;
-		blockInfo.lodCollision = Blocks.RED_PAINT.getInfo().lodCollision;
-		blockInfo.lodCollisionPhysical = Blocks.RED_PAINT.getInfo().lodCollisionPhysical;
-		blockInfo.lodShapeString = Blocks.RED_PAINT.getInfo().lodShapeString;
-		blockInfo.lodUseDetailCollision = Blocks.RED_PAINT.getInfo().lodUseDetailCollision;
-		blockInfo.cubeCubeCollision = Blocks.RED_PAINT.getInfo().cubeCubeCollision;
+
+
 	}
 }
