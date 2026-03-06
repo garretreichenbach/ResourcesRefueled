@@ -43,7 +43,7 @@ tasks.register("generateCTM", JavaExec) {
 	group = "tools"
 	description = "Generates the fluid_tank_ctm47.png sprite sheet from source overlay images."
 	classpath = sourceSets.main.runtimeClasspath
-	mainClass = "videogoose.resourcesrefueled.tools.FluidTankCTMGenerator"
+	mainClass = "videogoose.resourcesreorganized.tools.FluidTankCTMGenerator"
 }
 
 jar {

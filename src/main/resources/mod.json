@@ -1,12 +1,12 @@
 {
-  "name": "Resources Refueled",
+  "name": "Resources Reorganized",
   "author": "VideoGoose (TheDerpGamer)",
-  "description": "Adds configurable fuel and fluid systems to RRS for more immersive gameplay.",
+  "description": "Replaces StarMade's item teleportation with a proper logistics system. Now with fluids!",
   "version": "1.0.0",
   "starmade_version": "0.205.1",
   "client_mod": true,
   "server_mod": true,
-  "main_class": "videogoose.resourcesrefueled.ResourcesRefueled",
+  "main_class": "videogoose.resourcesreorganized.ResourcesReorganized",
   "smd_resource_id": 9999,
   "dependencies": [
     -1,
@@ -16,6 +16,6 @@
   "requires_class_resize": false,
   "hard_load_all_classes": false,
   "mixin_configs": [
-    "resourcesrefueled.mixins.json"
+    "resourcesreorganized.mixins.json"
   ]
 }

@@ -1,6 +1,6 @@
 # ResourcesRefueled
 
-A StarMade addon for **[Resources ReSourced](https://starmadedock.net/content/resources-resourced.8292/)** by Ithirahad that adds a stellar fuel economy to the game. Resource extraction and FTL travel now require **Heliogen** — a volatile plasma fuel distilled directly from starlight — tying your industrial output and exploration range to your proximity to, and relationship with, the stars around you.
+A StarMade addon for **[Resources ReSourced](https://starmadedock.net/content/resources-resourced.8292/)** by VideoGoose that adds a stellar fuel economy to the game. Resource extraction and FTL travel now require **Heliogen** — a volatile plasma fuel distilled directly from starlight — tying your industrial output and exploration range to your proximity to, and relationship with, the stars around you.
 
 ---
 
