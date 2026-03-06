@@ -7,7 +7,7 @@ import videogoose.resourcesreorganized.ResourcesReorganized;
 import videogoose.resourcesreorganized.element.ElementRegistry;
 import videogoose.resourcesreorganized.manager.ConfigManager;
 import videogoose.resourcesreorganized.systems.FluidSystemModule;
-import videogoose.resourcesreorganized.utils.CanisterMeta;
+import videogoose.resourcesreorganized.data.FluidMeta;
 
 import java.util.ArrayList;
 import java.util.Map;
@@ -229,8 +229,8 @@ public final class EntityFuelManager {
 					if(remaining <= 0) break;
 					InventorySlot slot = inventory.getSlot(slotId);
 					if(slot.getType() != canisterId) continue;
-					if(!CanisterMeta.isFilled(slot)) continue;
-					CanisterMeta.writeEmpty(slot);
+					if(!FluidMeta.isFilled(slot)) continue;
+					FluidMeta.writeEmpty(slot);
 					remaining--;
 				}
 			}

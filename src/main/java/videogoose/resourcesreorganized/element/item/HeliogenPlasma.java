@@ -1,5 +1,7 @@
 package videogoose.resourcesreorganized.element.item;
 
+import videogoose.resourcesreorganized.data.FluidMeta;
+
 /**
  * Raw Heliogen Plasma — the unrefined output of the Heliogen Condenser.
  * Collected from the StellarFuelSupplier pool and processed in the Heliogen Refinery
@@ -27,7 +29,8 @@ public class HeliogenPlasma extends Item {
 
 	@Override
 	public void postInitData() {
-		// No cross-element wiring needed.
+		// Heliogen Plasma is energetically unstable — tanks containing it explode when destroyed.
+		FluidMeta.registerVolatile(itemInfo.id);
 	}
 
 	@Override
@@ -35,4 +38,3 @@ public class HeliogenPlasma extends Item {
 		// TODO: custom icon once art assets are available.
 	}
 }
-

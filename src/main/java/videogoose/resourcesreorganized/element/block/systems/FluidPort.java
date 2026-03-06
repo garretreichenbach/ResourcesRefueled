@@ -6,7 +6,7 @@ import org.schema.game.common.data.player.inventory.InventorySlot;
 import videogoose.resourcesreorganized.ResourcesReorganized;
 import videogoose.resourcesreorganized.element.ElementRegistry;
 import videogoose.resourcesreorganized.element.block.Block;
-import videogoose.resourcesreorganized.utils.CanisterMeta;
+import videogoose.resourcesreorganized.data.FluidMeta;
 
 public class FluidPort extends Block {
 
@@ -54,7 +54,7 @@ public class FluidPort extends Block {
 	public static boolean isInputItem(InventorySlot slot) {
 		if(slot == null) return false;
 		if(slot.getType() != ElementRegistry.FLUID_CANISTER.getId()) return false;
-		return CanisterMeta.isFilled(slot);
+		return FluidMeta.isFilled(slot);
 	}
 
 	/**
@@ -71,6 +71,6 @@ public class FluidPort extends Block {
 	public static boolean isOutputItem(InventorySlot slot) {
 		if(slot == null) return false;
 		if(slot.getType() != ElementRegistry.FLUID_CANISTER.getId()) return false;
-		return CanisterMeta.isEmpty(slot);
+		return FluidMeta.isEmpty(slot);
 	}
 }

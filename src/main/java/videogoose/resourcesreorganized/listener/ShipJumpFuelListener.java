@@ -13,7 +13,7 @@ import videogoose.resourcesreorganized.element.ElementRegistry;
 import videogoose.resourcesreorganized.fuel.EntityFuelManager;
 import videogoose.resourcesreorganized.manager.ConfigManager;
 import videogoose.resourcesreorganized.systems.FluidSystemModule;
-import videogoose.resourcesreorganized.utils.CanisterMeta;
+import videogoose.resourcesreorganized.data.FluidMeta;
 
 /**
  * Handles Heliogen fuel consumption when a ship engages its FTL drive.
@@ -112,7 +112,7 @@ public class ShipJumpFuelListener extends Listener<ShipJumpEngageEvent> {
 		short canisterId = ElementRegistry.FLUID_CANISTER.getId();
 		int total = 0;
 		for(Inventory inventory : shipManagerContainer.getInventories().values()) {
-			total += CanisterMeta.countFilled(inventory, canisterId);
+			total += FluidMeta.countFilled(inventory, canisterId);
 		}
 		return total;
 	}

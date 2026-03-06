@@ -19,7 +19,7 @@ import org.schema.schine.graphicsengine.forms.BoundingBox;
 import videogoose.resourcesreorganized.ResourcesReorganized;
 import videogoose.resourcesreorganized.element.ElementRegistry;
 import videogoose.resourcesreorganized.manager.ConfigManager;
-import videogoose.resourcesreorganized.utils.CanisterMeta;
+import videogoose.resourcesreorganized.data.FluidMeta;
 
 import java.io.IOException;
 import java.util.*;
@@ -771,6 +771,19 @@ public class FluidSystemModule extends SystemModule {
 	}
 
 	/**
+	 * Returns {@code true} if the network containing {@code blockIndex} holds a volatile
+	 * fluid (one registered via {@link FluidMeta#registerVolatile}).
+	 * Used by {@link videogoose.resourcesreorganized.listener.SegmentPieceEventHandler} to decide
+	 * whether a destroyed tank block should trigger an explosion.
+	 */
+	public boolean isNetworkVolatile(long blockIndex) {
+		for(FluidNetwork net : networks) {
+			if(net.memberIndices.contains(blockIndex)) return net.isVolatile();
+		}
+		return false;
+	}
+
+	/**
 	 * AABB of the tank blocks in the network that contains {@code blockIndex}.
 	 * Falls back to all tank blocks if not found.
 	 */
@@ -883,10 +896,10 @@ public class FluidSystemModule extends SystemModule {
 			if(inv == null) continue;
 
 			// --- Slot 0 : filled canister → network (drain canister) ---
-			int filledSlotId = CanisterMeta.findFilledSlot(inv, canisterId, (short) 0);
+			int filledSlotId = FluidMeta.findFilledSlot(inv, canisterId, (short) 0);
 			if(filledSlotId >= 0) {
 				InventorySlot filledSlot = inv.getSlot(filledSlotId);
-				short sourceFluidId = CanisterMeta.getFluidId(filledSlot);
+				short sourceFluidId = FluidMeta.getFluidId(filledSlot);
 
 				FluidNetwork target = null;
 				for(long nb : faceAdjacentIndices(port.blockIndex)) {
@@ -900,7 +913,7 @@ public class FluidSystemModule extends SystemModule {
 					if(target != null) break;
 				}
 				if(target != null) {
-					CanisterMeta.writeEmpty(filledSlot);
+					FluidMeta.writeEmpty(filledSlot);
 					target.fluidLevel = Math.min(target.tankCapacity, target.fluidLevel + unitsPerCanister);
 					if(target.fluidId == 0) target.fluidId = sourceFluidId;
 					anyChange = true;
@@ -911,7 +924,7 @@ public class FluidSystemModule extends SystemModule {
 			}
 
 			// --- Slot 1 : empty canister → fill from network ---
-			int emptySlotId = CanisterMeta.findEmptySlot(inv, canisterId);
+			int emptySlotId = FluidMeta.findEmptySlot(inv, canisterId);
 			if(emptySlotId >= 0) {
 				FluidNetwork source = null;
 				for(long nb : faceAdjacentIndices(port.blockIndex)) {
@@ -931,7 +944,7 @@ public class FluidSystemModule extends SystemModule {
 						source.fluidId = 0;
 					}
 					InventorySlot emptySlot = inv.getSlot(emptySlotId);
-					CanisterMeta.writeFilledSlot(emptySlot, networkFluidId, unitsPerCanister, unitsPerCanister);
+					FluidMeta.writeFilledSlot(emptySlot, networkFluidId, unitsPerCanister, unitsPerCanister);
 					anyChange = true;
 					if(ConfigManager.isDebugMode()) {
 						ResourcesReorganized.getInstance().logInfo("[FluidPort] @ " + port.blockIndex + " filled 1 canister with fluid=" + networkFluidId + " (" + unitsPerCanister + " units drained). Network now at " + source.fluidLevel + "/" + source.tankCapacity);
@@ -1065,6 +1078,15 @@ public class FluidSystemModule extends SystemModule {
 		/** True when this network has no blocks at all. */
 		public boolean isEmpty() {
 			return memberIndices.isEmpty();
+		}
+
+		/**
+		 * Returns {@code true} if the fluid currently stored in this network is volatile
+		 * (i.e. will cause an explosion when the containing tank block is destroyed).
+		 * Delegates to {@link FluidMeta#isVolatile}.
+		 */
+		public boolean isVolatile() {
+			return FluidMeta.isVolatile(fluidId);
 		}
 
 		public String getFluidName() {

@@ -16,7 +16,7 @@ import videogoose.resourcesreorganized.fuel.EntityFuelManager;
 import videogoose.resourcesreorganized.fuel.FuelTickState;
 import videogoose.resourcesreorganized.manager.ConfigManager;
 import videogoose.resourcesreorganized.systems.FluidSystemModule;
-import videogoose.resourcesreorganized.utils.CanisterMeta;
+import videogoose.resourcesreorganized.data.FluidMeta;
 
 import static org.ithirahad.resourcesresourced.listeners.BlockRemovalLogic.isExtractor;
 
@@ -66,7 +66,7 @@ public class ExtractorFuelListener implements FactoryManufactureListener {
 		// Now snapshot the current live state into the virtualized cache.
 		// Source 1: FluidTankSystemModule (may be null if this system isn't installed/loaded).
 		// Source 2: Heliogen Canisters in the factory inventory.
-		int canisters = CanisterMeta.countFilled(inventory, ElementRegistry.FLUID_CANISTER.getId());
+		int canisters = FluidMeta.countFilled(inventory, ElementRegistry.FLUID_CANISTER.getId());
 		EntityFuelManager.syncFromLive(uid, tankModule, canisters);
 
 		// Debug mode shortcut: provide a large fake fuel reserve so extractors run without real Heliogen.

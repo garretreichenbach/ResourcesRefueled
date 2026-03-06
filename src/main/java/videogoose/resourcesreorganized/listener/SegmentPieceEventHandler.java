@@ -62,8 +62,9 @@ public class SegmentPieceEventHandler implements SegmentPieceAddListener, Segmen
 			if(managerContainer.getModMCModule(ElementRegistry.FLUID_TANK.getId()) instanceof FluidSystemModule) {
 				FluidSystemModule tankModule = (FluidSystemModule) managerContainer.getModMCModule(ElementRegistry.FLUID_TANK.getId());
 				long blockIndex = segmentPiece.getAbsoluteIndex();
-				// Use the fluid level of the specific network this block belonged to,
-				// so only that network's stored fluid contributes to the explosion.
+				// Only explode if the network's fluid is volatile.
+				// Non-volatile fluids (water, inert coolants, etc.) spill harmlessly.
+				if(!tankModule.isNetworkVolatile(blockIndex)) return;
 				double networkFluid = tankModule.getFluidLevelForBlock(blockIndex);
 				if(networkFluid > 0 && !tankModule.getBlockIndicesForExplosion(blockIndex).isEmpty()) {
 					List<ModuleExplosion> explosionList = createExplosionList(segmentPiece, tankModule, blockIndex);

@@ -145,6 +145,9 @@ public class FluidNetworkDrawer extends ModWorldDrawer {
 		if(currentNetwork != null) {
 			//Add some vertical spacing so we aren't drawing over other info
 			text += "\n\n\n\nCapacity: " + currentNetwork.tankCapacity + "L\nCurrent Volume: " + currentNetwork.fluidLevel + "L\nContents: " + currentNetwork.getFluidName();
+			if(currentNetwork.isVolatile()) {
+				text += " [Volatile]";
+			}
 			flow = fluidModule.getFlowForNetwork(currentIndex);
 			// Network flow (aggregate pumps affecting this network)
 			if(flow == 0) {
@@ -166,6 +169,7 @@ public class FluidNetworkDrawer extends ModWorldDrawer {
 			} else {
 				text += "\nPump Flow: Inflow (" + (-pumpFlow) + "L/s)";
 			}
+
 		}
 
 		hud.getHelpManager().addInfo(HudContextHelperContainer.Hos.MOUSE, ContextFilter.NORMAL, text);

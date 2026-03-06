@@ -1,47 +1,83 @@
-package videogoose.resourcesreorganized.utils;
+package videogoose.resourcesreorganized.data;
 
 import org.json.JSONObject;
 import org.schema.game.common.data.element.ElementKeyMap;
 import org.schema.game.common.data.player.inventory.Inventory;
 import org.schema.game.common.data.player.inventory.InventorySlot;
-import videogoose.resourcesreorganized.element.ElementRegistry;
+
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
- * Central utility for reading and writing canister slot metadata.
+ * Central utility for fluid-type properties and per-slot fluid metadata.
  * <p>
- * All canisters are represented by a single item type ({@link ElementRegistry#FLUID_CANISTER}).
- * Their filled/empty state and the fluid they contain is encoded entirely via
- * {@link InventorySlot#getCustomData()} using the following JSON keys:
+ * <b>Fluid-type registry</b> — properties that apply to every container (tank network
+ * or canister) holding a given fluid element ID, registered once at startup:
+ * <ul>
+ *   <li>Volatile fluids cause tank explosions when the hosting block is destroyed.</li>
+ * </ul>
+ * <p>
+ * <b>Slot metadata</b> — all canisters share a single item type; their fill state is
+ * encoded in {@link InventorySlot#getCustomData()} using these JSON keys:
  * <ul>
  *   <li>{@code "fluid_id"}     — {@code short} element ID of the stored fluid. 0 = empty.</li>
- *   <li>{@code "fluid_amount"} — {@code double} current fluid units stored in this canister.</li>
- *   <li>{@code "capacity"}     — {@code double} maximum fluid units this canister can hold.</li>
- *   <li>{@code "name"}         — engine-recognised display-name override shown in the tooltip.</li>
- *   <li>{@code "description"}  — engine-recognised description override shown in the tooltip.</li>
+ *   <li>{@code "fluid_amount"} — {@code double} current fluid units stored.</li>
+ *   <li>{@code "capacity"}     — {@code double} maximum fluid units the canister holds.</li>
+ *   <li>{@code "is_volatile"}  — {@code boolean} whether the stored fluid is volatile.</li>
+ *   <li>{@code "name"}         — engine display-name override shown in the tooltip.</li>
+ *   <li>{@code "description"}  — engine description override shown in the tooltip.</li>
  * </ul>
- * An empty canister has no metadata (or has {@code fluid_id == 0}).
+ * An empty canister has no metadata (or {@code fluid_id == 0}).
  */
-public final class CanisterMeta {
+public final class FluidMeta {
 
-	// ---- JSON key constants ------------------------------------------------
+	// =========================================================================
+	// JSON key constants
+	// =========================================================================
+
 	public static final String KEY_FLUID_ID     = "fluid_id";
 	public static final String KEY_FLUID_AMOUNT = "fluid_amount";
 	public static final String KEY_CAPACITY     = "capacity";
-
-	private CanisterMeta() {}
+	public static final String KEY_IS_VOLATILE  = "is_volatile";
 
 	// =========================================================================
-	// Writers
+	// Fluid-type registry
+	// =========================================================================
+
+	/** Element IDs of fluids that are volatile (cause explosions on tank destruction). */
+	private static final Set<Short> VOLATILE_FLUIDS = new HashSet<>();
+
+	private FluidMeta() {}
+
+	/**
+	 * Marks {@code fluidId} as a volatile fluid.
+	 * Call from the fluid element's {@code postInitData()}.
+	 */
+	public static void registerVolatile(short fluidId) {
+		VOLATILE_FLUIDS.add(fluidId);
+	}
+
+	/** Returns an unmodifiable view of all registered volatile fluid IDs. */
+	public static Set<Short> getVolatileFluids() {
+		return Collections.unmodifiableSet(VOLATILE_FLUIDS);
+	}
+
+	/**
+	 * Returns {@code true} if {@code fluidId} is registered as volatile.
+	 * {@code 0} (empty / no fluid) is never volatile.
+	 */
+	public static boolean isVolatile(short fluidId) {
+		if(fluidId == 0) return false;
+		return VOLATILE_FLUIDS.contains(fluidId);
+	}
+
+	// =========================================================================
+	// Slot writers
 	// =========================================================================
 
 	/**
-	 * Stamps the slot at {@code slotIndex} with filled-canister metadata.
-	 *
-	 * @param inventory   The inventory that owns the slot.
-	 * @param slotIndex   The slot to stamp.
-	 * @param fluidId     Element ID of the fluid stored.
-	 * @param amount      Fluid units stored.
-	 * @param capacity    Maximum fluid units the canister can hold.
+	 * Stamps the slot at {@code slotIndex} in {@code inventory} with filled-canister metadata.
 	 */
 	public static void writeFilled(Inventory inventory, int slotIndex, short fluidId, double amount, double capacity) {
 		InventorySlot slot = inventory.getSlot(slotIndex);
@@ -54,25 +90,27 @@ public final class CanisterMeta {
 	 */
 	public static void writeFilledSlot(InventorySlot slot, short fluidId, double amount, double capacity) {
 		JSONObject meta = slot.getOrCreateCustomData();
-		meta.put(KEY_FLUID_ID,     (int) fluidId);   // JSONObject stores numbers as int/double
+		meta.put(KEY_FLUID_ID,     (int) fluidId);
 		meta.put(KEY_FLUID_AMOUNT, amount);
 		meta.put(KEY_CAPACITY,     capacity);
+		meta.put(KEY_IS_VOLATILE,  isVolatile(fluidId));
 
-		// Compute display strings
 		String fluidName = resolveFluidName(fluidId);
 		meta.put("name",        "Fluid Canister (" + fluidName + ")");
-		meta.put("description", String.format("%.1f / %.1f L of %s", amount, capacity, fluidName));
+		meta.put("description", String.format("%.1f / %.1f L of %s%s",
+				amount, capacity, fluidName,
+				isVolatile(fluidId) ? " [Volatile]" : ""));
 	}
 
 	/**
-	 * Clears all canister metadata from the slot, making it an empty canister.
+	 * Clears all slot metadata, making the canister empty.
 	 */
 	public static void writeEmpty(InventorySlot slot) {
 		slot.clearCustomData();
 	}
 
 	// =========================================================================
-	// Readers
+	// Slot readers
 	// =========================================================================
 
 	/** Returns {@code true} if the slot holds a canister with fluid inside. */
@@ -87,37 +125,38 @@ public final class CanisterMeta {
 		return !isFilled(slot);
 	}
 
-	/**
-	 * Returns the fluid element ID stored in this canister slot, or {@code 0} if empty.
-	 */
+	/** Returns the fluid element ID stored in this slot, or {@code 0} if empty. */
 	public static short getFluidId(InventorySlot slot) {
 		if(slot == null || !slot.hasCustomData()) return 0;
 		return (short) slot.getCustomData().optInt(KEY_FLUID_ID, 0);
 	}
 
-	/**
-	 * Returns the fluid amount stored in this canister slot, or {@code 0.0} if empty.
-	 */
+	/** Returns the fluid amount stored in this slot, or {@code 0.0} if empty. */
 	public static double getFluidAmount(InventorySlot slot) {
 		if(slot == null || !slot.hasCustomData()) return 0.0;
 		return slot.getCustomData().optDouble(KEY_FLUID_AMOUNT, 0.0);
 	}
 
-	/**
-	 * Returns the capacity stored in this canister slot, or the config default if absent.
-	 */
+	/** Returns the capacity stored in this slot, or {@code 0.0} if absent. */
 	public static double getCapacity(InventorySlot slot) {
 		if(slot == null || !slot.hasCustomData()) return 0.0;
 		return slot.getCustomData().optDouble(KEY_CAPACITY, 0.0);
+	}
+
+	/**
+	 * Returns {@code true} if the slot's canister contains a volatile fluid.
+	 * Always {@code false} for empty canisters.
+	 */
+	public static boolean isVolatile(InventorySlot slot) {
+		if(slot == null || !slot.hasCustomData()) return false;
+		return slot.getCustomData().optBoolean(KEY_IS_VOLATILE, false);
 	}
 
 	// =========================================================================
 	// Inventory-level helpers
 	// =========================================================================
 
-	/**
-	 * Counts the number of filled canister slots (determined by metadata) in the given inventory.
-	 */
+	/** Counts filled canister slots (by metadata) in the given inventory. */
 	public static int countFilled(Inventory inventory, short canisterId) {
 		int count = 0;
 		for(int slotId : inventory.getAllSlots()) {
@@ -128,8 +167,7 @@ public final class CanisterMeta {
 	}
 
 	/**
-	 * Finds the first slot in {@code inventory} that is a {@link ElementRegistry#FLUID_CANISTER}
-	 * and has fluid metadata matching {@code fluidId} (or any fluid if {@code fluidId == 0}).
+	 * Finds the first filled-canister slot matching {@code fluidId} (pass {@code 0} for any fluid).
 	 * Returns {@code -1} if none found.
 	 */
 	public static int findFilledSlot(Inventory inventory, short canisterId, short fluidId) {
@@ -144,8 +182,7 @@ public final class CanisterMeta {
 	}
 
 	/**
-	 * Finds the first slot in {@code inventory} that is a {@link ElementRegistry#FLUID_CANISTER}
-	 * and is empty (no fluid metadata).
+	 * Finds the first empty-canister slot (no fluid metadata).
 	 * Returns {@code -1} if none found.
 	 */
 	public static int findEmptySlot(Inventory inventory, short canisterId) {
@@ -167,4 +204,3 @@ public final class CanisterMeta {
 		return "Unknown Fluid";
 	}
 }
-
