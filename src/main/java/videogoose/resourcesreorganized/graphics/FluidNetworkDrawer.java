@@ -144,7 +144,7 @@ public class FluidNetworkDrawer extends ModWorldDrawer {
 		float flow = 0.0f;
 		if(currentNetwork != null) {
 			//Add some vertical spacing so we aren't drawing over other info
-			text += "\n\n\n\nCapacity: " + currentNetwork.tankCapacity + "L\nCurrent Volume: " + currentNetwork.fluidLevel + "L\nContents: " + currentNetwork.getFluidName();
+			text += "\n\n\n\nCapacity: " + currentNetwork.tankCapacity + "mL\nCurrent Volume: " + currentNetwork.fluidLevel + "mL\nContents: " + currentNetwork.getFluidName();
 			if(currentNetwork.isVolatile()) {
 				text += " [Volatile]";
 			}
@@ -153,9 +153,9 @@ public class FluidNetworkDrawer extends ModWorldDrawer {
 			if(flow == 0) {
 				text += "\nNetwork Flow: No flow";
 			} else if(flow > 0) {
-				text += "\nNetwork Flow: Outflow (" + flow + "L/s)";
+				text += "\nNetwork Flow: Outflow (" + flow + "mL/s)";
 			} else {
-				text += "\nNetwork Flow: Inflow (" + (-flow) + "L/s)";
+				text += "\nNetwork Flow: Inflow (" + (-flow) + "mL/s)";
 			}
 		}
 
@@ -165,9 +165,9 @@ public class FluidNetworkDrawer extends ModWorldDrawer {
 			if(pumpFlow == 0) {
 				text += "\nPump Flow: No flow";
 			} else if(pumpFlow > 0) {
-				text += "\nPump Flow: Outflow (" + pumpFlow + "L/s)";
+				text += "\nPump Flow: Outflow (" + pumpFlow + "mL/s)";
 			} else {
-				text += "\nPump Flow: Inflow (" + (-pumpFlow) + "L/s)";
+				text += "\nPump Flow: Inflow (" + (-pumpFlow) + "mL/s)";
 			}
 
 		}

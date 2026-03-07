@@ -2,8 +2,10 @@ package videogoose.resourcesreorganized;
 
 import api.config.BlockConfig;
 import api.listener.events.controller.ClientInitializeEvent;
+import api.mod.StarLoader;
 import api.mod.StarMod;
 import org.schema.schine.resource.ResourceLoader;
+import videogoose.resourcesreorganized.commands.GiveFluidCanisterCommand;
 import videogoose.resourcesreorganized.element.ElementRegistry;
 import videogoose.resourcesreorganized.fuel.EntityFuelManager;
 import videogoose.resourcesreorganized.fuel.StellarFuelManager;
@@ -62,7 +64,7 @@ public final class ResourcesReorganized extends StarMod {
 	}
 
 	private void registerCommands() {
-
+		StarLoader.registerCommand(new GiveFluidCanisterCommand());
 	}
 
 	@Override

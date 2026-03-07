@@ -83,17 +83,22 @@ public class SegmentPieceEventHandler implements SegmentPieceAddListener, Segmen
 	@Override
 	public void onInteract(SegmentPiece segmentPiece, PlayerState playerState, PlayerInteractionControlManager playerInteractionControlManager) {
 		//I really wish I could use a switch statement here but Java doesn't allow switching on non-constant values
-		if(!playerState.isOnServer()) {
-			if(segmentPiece.getSegmentController() instanceof ManagedUsableSegmentController<?>) {
-				ManagedUsableSegmentController<?> controller = (ManagedUsableSegmentController<?>) segmentPiece.getSegmentController();
-				if(segmentPiece.getType() == ElementRegistry.FLUID_PORT.getId()) {
-					if(controller.getManagerContainer().getModMCModule(ElementRegistry.FLUID_TANK.getId()) instanceof FluidSystemModule) {
-						FluidSystemModule fluidSystemModule = (FluidSystemModule) controller.getManagerContainer().getModMCModule(ElementRegistry.FLUID_TANK.getId());
-						(new FluidPortDialog(segmentPiece, fluidSystemModule)).activate();
-					}
-				}
+		if(segmentPiece.getType() == ElementRegistry.FLUID_PORT.getId()) {
+			FluidSystemModule fluidSystemModule = getFluidSystemModule(segmentPiece);
+			if(fluidSystemModule != null) {
+				(new FluidPortDialog(fluidSystemModule, segmentPiece)).activate();
 			}
 		}
+	}
+
+	private FluidSystemModule getFluidSystemModule(SegmentPiece segmentPiece) {
+		if(segmentPiece.getSegmentController() instanceof ManagedUsableSegmentController<?>) {
+			ManagedUsableSegmentController<?> controller = (ManagedUsableSegmentController<?>) segmentPiece.getSegmentController();
+			if(controller.getManagerContainer().getModMCModule(ElementRegistry.FLUID_TANK.getId()) instanceof FluidSystemModule) {
+				return (FluidSystemModule) controller.getManagerContainer().getModMCModule(ElementRegistry.FLUID_TANK.getId());
+			}
+		}
+		return null;
 	}
 
 	private List<ModuleExplosion> createExplosionList(SegmentPiece segmentPiece, FluidSystemModule tankModule, long blockIndex) {

@@ -1,9 +1,11 @@
 package videogoose.resourcesreorganized.data;
 
 import org.json.JSONObject;
+import org.schema.game.common.data.element.ElementInformation;
 import org.schema.game.common.data.element.ElementKeyMap;
 import org.schema.game.common.data.player.inventory.Inventory;
 import org.schema.game.common.data.player.inventory.InventorySlot;
+import videogoose.resourcesreorganized.element.ElementRegistry;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -36,10 +38,10 @@ public final class FluidMeta {
 	// JSON key constants
 	// =========================================================================
 
-	public static final String KEY_FLUID_ID     = "fluid_id";
+	public static final String KEY_FLUID_ID = "fluid_id";
 	public static final String KEY_FLUID_AMOUNT = "fluid_amount";
-	public static final String KEY_CAPACITY     = "capacity";
-	public static final String KEY_IS_VOLATILE  = "is_volatile";
+	public static final String KEY_CAPACITY = "capacity";
+	public static final String KEY_IS_VOLATILE = "is_volatile";
 
 	// =========================================================================
 	// Fluid-type registry
@@ -48,7 +50,24 @@ public final class FluidMeta {
 	/** Element IDs of fluids that are volatile (cause explosions on tank destruction). */
 	private static final Set<Short> VOLATILE_FLUIDS = new HashSet<>();
 
-	private FluidMeta() {}
+	private FluidMeta() {
+	}
+
+	public static String getFluidName(short fluidId) {
+		if(fluidId == 0) return "Empty";
+		if(ElementKeyMap.isValidType(fluidId)) return ElementKeyMap.getInfo(fluidId).getName();
+		return "Unknown Fluid";
+	}
+
+	public static short getFluidId(String fluidName) {
+		if(fluidName.equalsIgnoreCase("empty")) return 0;
+		for(ElementInformation info : ElementKeyMap.getInfoArray()) {
+			if(info.getName().equalsIgnoreCase(fluidName)) {
+				return info.getId();
+			}
+		}
+		return -1; // Not found
+	}
 
 	/**
 	 * Marks {@code fluidId} as a volatile fluid.
@@ -81,8 +100,13 @@ public final class FluidMeta {
 	 */
 	public static void writeFilled(Inventory inventory, int slotIndex, short fluidId, double amount, double capacity) {
 		InventorySlot slot = inventory.getSlot(slotIndex);
-		if(slot == null) return;
+		if(slot == null) {
+			throw new IllegalArgumentException("Invalid slot index: " + slotIndex);
+		}
 		writeFilledSlot(slot, fluidId, amount, capacity);
+		slot.setType(ElementRegistry.FLUID_CANISTER.getId());
+		slot.setCount((int) amount);
+		inventory.sendInventoryModification(slotIndex);
 	}
 
 	/**
@@ -90,16 +114,14 @@ public final class FluidMeta {
 	 */
 	public static void writeFilledSlot(InventorySlot slot, short fluidId, double amount, double capacity) {
 		JSONObject meta = slot.getOrCreateCustomData();
-		meta.put(KEY_FLUID_ID,     (int) fluidId);
+		meta.put(KEY_FLUID_ID, fluidId);
 		meta.put(KEY_FLUID_AMOUNT, amount);
-		meta.put(KEY_CAPACITY,     capacity);
-		meta.put(KEY_IS_VOLATILE,  isVolatile(fluidId));
+		meta.put(KEY_CAPACITY, capacity);
+		meta.put(KEY_IS_VOLATILE, isVolatile(fluidId));
 
 		String fluidName = resolveFluidName(fluidId);
-		meta.put("name",        "Fluid Canister (" + fluidName + ")");
-		meta.put("description", String.format("%.1f / %.1f L of %s%s",
-				amount, capacity, fluidName,
-				isVolatile(fluidId) ? " [Volatile]" : ""));
+		meta.put("name", "Fluid Canister (" + fluidName + ")");
+		meta.put("description", String.format("%.1f / %.1f mL of %s%s", amount, capacity, fluidName, isVolatile(fluidId) ? " [Volatile]" : ""));
 	}
 
 	/**

@@ -11,9 +11,6 @@ import videogoose.resourcesreorganized.data.FluidMeta;
  */
 public class HeliogenPlasma extends Item {
 
-	/** Volume per unit — deliberately bulky to incentivise refining into canisters. */
-	public static final float VOLUME = 0.002f;
-
 	public HeliogenPlasma() {
 		super("Heliogen Plasma");
 	}
@@ -22,9 +19,6 @@ public class HeliogenPlasma extends Item {
 	public void initData() {
 		super.initData();
 		itemInfo.description = "Raw stellar plasma distilled from the photonic wind of nearby stars. Extremely energetic, but unstable in bulk quantities.";
-		itemInfo.volume = VOLUME;
-		itemInfo.shoppable = false; // Cannot be bought in shops — must be produced.
-		itemInfo.blockResourceType = 0; // Treated as an ore/raw material.
 	}
 
 	@Override

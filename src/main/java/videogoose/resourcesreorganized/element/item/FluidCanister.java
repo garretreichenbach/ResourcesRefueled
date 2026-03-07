@@ -1,5 +1,6 @@
 package videogoose.resourcesreorganized.element.item;
 
+import api.utils.element.Blocks;
 import videogoose.resourcesreorganized.manager.ConfigManager;
 
 /**
@@ -7,7 +8,7 @@ import videogoose.resourcesreorganized.manager.ConfigManager;
  * <p>
  * A single item type represents both empty and filled states. The actual fluid stored,
  * the current amount, and the capacity are encoded as per-slot metadata via
- * {@link videogoose.resourcesreorganized.utils.CanisterMeta}. The engine's built-in
+ * {@link videogoose.resourcesreorganized.data.FluidMeta}. The engine's built-in
  * {@code "name"} and {@code "description"} metadata keys override the tooltip text
  * automatically, so no separate filled/empty item type is needed.
  * <p>
@@ -29,6 +30,7 @@ public class FluidCanister extends Item {
 	@Override
 	public void initData() {
 		super.initData();
+		itemInfo.type = Blocks.PIPE.getInfo().type;
 		itemInfo.description = "A sealed portable canister for storing fluids.\nHolds up to " + getCapacity() + " mL.";
 		itemInfo.volume = 0.3f;
 		itemInfo.mass = 0.05f;

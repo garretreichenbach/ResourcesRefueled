@@ -2,6 +2,8 @@ package videogoose.resourcesreorganized.element.block.systems;
 
 import api.config.BlockConfig;
 import api.utils.element.Blocks;
+import org.schema.game.common.data.element.Element;
+import org.schema.game.common.data.player.inventory.Inventory;
 import org.schema.game.common.data.player.inventory.InventorySlot;
 import videogoose.resourcesreorganized.ResourcesReorganized;
 import videogoose.resourcesreorganized.element.ElementRegistry;
@@ -18,16 +20,16 @@ public class FluidPort extends Block {
 	public void initData() {
 		blockInfo = BlockConfig.newElement(ResourcesReorganized.getInstance(), name, new short[] {0, 0, 0, 0, 0, 0});
 		blockInfo.type = Blocks.PIPE.getInfo().type;
-		blockInfo.description = "A port for inputting or outputting fluids to/from machines and tank. " +
-				"Connect to pipes and pumps to transfer fluids in or out of a machine or tank.";
+		blockInfo.description = "A port for inputting or outputting fluids to/from machines and tank.\nConnect to pipes and pumps to transfer fluids in or out of a machine or tank.";
 		blockInfo.price = (int) (Blocks.STORAGE.getInfo().price);
 		blockInfo.mass = Blocks.STORAGE.getInfo().mass;
 		blockInfo.volume = Blocks.STORAGE.getInfo().volume;
 		blockInfo.maxHitPointsFull = Blocks.STORAGE.getInfo().maxHitPointsFull;
 		blockInfo.shoppable = true;
+		blockInfo.inventoryGroup = "FluidStorage";
 		blockInfo.blended = true;
 		blockInfo.canActivate = true;
-		blockInfo.inventoryType = 6; //Other
+		blockInfo.inventoryType = Inventory.INVENTORY_TYPE_OTHER;
 	}
 
 	@Override
@@ -37,7 +39,15 @@ public class FluidPort extends Block {
 
 	@Override
 	public void initResources() {
-
+		short[] textureIds = {
+				Blocks.CAPSULE_REFINERY.getInfo().getTextureId(Element.FRONT),
+				Blocks.FACTORY_ENHANCER.getInfo().getTextureId(Element.BACK),
+				Blocks.FACTORY_ENHANCER.getInfo().getTextureId(Element.TOP),
+				Blocks.FACTORY_ENHANCER.getInfo().getTextureId(Element.BOTTOM),
+				Blocks.FACTORY_ENHANCER.getInfo().getTextureId(Element.RIGHT),
+				Blocks.FACTORY_ENHANCER.getInfo().getTextureId(Element.LEFT)
+		};
+		blockInfo.setTextureId(textureIds);
 	}
 
 	/**
