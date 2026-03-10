@@ -13,6 +13,7 @@ import videogoose.resourcesreorganized.element.block.systems.HeliogenCondenser;
 import videogoose.resourcesreorganized.element.block.systems.HeliogenRefinery;
 import videogoose.resourcesreorganized.element.item.FluidCanister;
 import videogoose.resourcesreorganized.element.item.HeliogenPlasma;
+import videogoose.resourcesreorganized.manager.ConfigManager;
 
 /**
  * Central registry that defines and registers all mod blocks/chambers/weapons/etc. by implementing the ElementInterface and adding them to the enum.
@@ -95,9 +96,34 @@ public enum ElementRegistry {
 		return id == PIPE_VALVE.getId() || id == PIPE_FILTER.getId() || id == PIPE_PUMP.getId();
 	}
 
+	public static boolean isContainer(short id) {
+		return id == FLUID_CANISTER.getId() || id == FLUID_TANK.getId() || id == FLUID_PORT.getId();
+	}
+
 	public static void registerRRSBlocks() {
 		MAGMATIC_EXTRACTOR = getInfoByName("Magmatic Extractor");
 		VAPOR_SIPHON = getInfoByName("Vapor Siphon");
+	}
+
+	public static short getIdByName(String containerType) {
+		for(ElementRegistry registry : values()) {
+			if(registry.getInfo().getName().equalsIgnoreCase(containerType)) {
+				return registry.getId();
+			}
+		}
+		return -1;
+	}
+
+	public static double getCapacityForContainer(short containerId) {
+		if(containerId == FLUID_TANK.getId()) {
+			return ConfigManager.getCapacityPerTank();
+		} else if(containerId == FLUID_PORT.getId()) {
+			return ConfigManager.getCapacityPerPort();
+		} else if(containerId == FLUID_CANISTER.getId()) {
+			return ConfigManager.getCapacityPerCanister();
+		} else {
+			return 0;
+		}
 	}
 
 	public ElementInformation getInfo() {

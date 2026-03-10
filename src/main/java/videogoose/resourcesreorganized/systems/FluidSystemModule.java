@@ -46,6 +46,9 @@ import java.util.*;
  */
 public class FluidSystemModule extends SystemModule {
 
+	public static final int INPUT_SLOT_INDEX = 0;
+	public static final int OUTPUT_SLOT_INDEX = 1;
+
 	// =========================================================================
 	// Inner types
 	// =========================================================================
@@ -120,13 +123,18 @@ public class FluidSystemModule extends SystemModule {
 		// Convert tick rate to seconds for flow rate calculation (20 ticks per second)
 		float ticksPerSecond = 20.0f;
 
+		double portBufferCapacity = ConfigManager.getCapacityPerPort();
+
 		for(FluidPipeSegment seg : pipeSegments.values()) {
 			if(seg.blockType != ElementRegistry.PIPE_PUMP.getId()) continue;
 			long pumpIndex = seg.blockIndex;
 
-			// Find adjacent networks (may be 0, 1 or multiple). We'll collect distinct networks.
+			// Collect adjacent networks AND adjacent port buffers.
 			Set<FluidNetwork> adjacentNets = new LinkedHashSet<>();
+			List<FluidPortSegment> adjacentPorts = new ArrayList<>();
 			for(long nb : faceAdjacentIndices(pumpIndex)) {
+				FluidPortSegment portSeg = portSegments.get(nb);
+				if(portSeg != null) adjacentPorts.add(portSeg);
 				for(FluidNetwork net : networks) {
 					if(net.memberIndices.contains(nb)) {
 						adjacentNets.add(net);
@@ -135,62 +143,80 @@ public class FluidSystemModule extends SystemModule {
 				}
 			}
 
-			if(adjacentNets.size() < 2) {
-				// No flow possible
+			if(adjacentNets.size() + adjacentPorts.size() < 2) {
 				seg.flowRate = 0;
 				continue;
 			}
 
-			// Choose a source network (has fluid) and a target network (has capacity).
-			FluidNetwork source = null;
-			FluidNetwork target = null;
+			// Resolve source: prefer a network with fluid, fall back to a port buffer with fluid.
+			FluidNetwork sourceNet = null;
+			FluidPortSegment sourcePort = null;
 			for(FluidNetwork net : adjacentNets) {
-				if(source == null && net.fluidLevel > 0) source = net;
-				if(target == null && net.tankCapacity > net.fluidLevel) target = net;
-				if(source != null && target != null && source != target) break;
+				if(net.fluidLevel > 0) { sourceNet = net; break; }
 			}
-			if(source == null || target == null || source == target) {
-				// No flow possible
-				seg.flowRate = 0;
-				continue;
-			}
-
-			// Check fluid compatibility: only pump if target is empty or matches source fluid type
-			if(target.fluidId != 0 && target.fluidId != source.fluidId) {
-				// Incompatible fluid types - cannot pump
-				seg.flowRate = 0;
-				if(ConfigManager.isDebugMode()) {
-					ResourcesReorganized.getInstance().logInfo("[FluidNetwork] Pump @ " + pumpIndex + " blocked: incompatible fluids (source: " + source.fluidId + ", target: " + target.fluidId + ")");
+			if(sourceNet == null) {
+				for(FluidPortSegment port : adjacentPorts) {
+					if(port.bufferLevel > 0) { sourcePort = port; break; }
 				}
+			}
+
+			// Resolve target: prefer a network with capacity, fall back to a port buffer with space.
+			// Must be a different container from the source, and fluid-compatible.
+			short sourceFluidId = sourceNet != null ? sourceNet.fluidId : (sourcePort != null ? sourcePort.bufferFluidId : 0);
+			FluidNetwork targetNet = null;
+			FluidPortSegment targetPort = null;
+			for(FluidNetwork net : adjacentNets) {
+				if(net == sourceNet) continue;
+				if(net.fluidId != 0 && net.fluidId != sourceFluidId) continue;
+				if(net.tankCapacity > net.fluidLevel) { targetNet = net; break; }
+			}
+			if(targetNet == null) {
+				for(FluidPortSegment port : adjacentPorts) {
+					if(port == sourcePort) continue;
+					if(port.bufferFluidId != 0 && port.bufferFluidId != sourceFluidId) continue;
+					if(port.bufferLevel < portBufferCapacity) { targetPort = port; break; }
+				}
+			}
+
+			boolean hasSource = sourceNet != null || sourcePort != null;
+			boolean hasTarget = targetNet != null || targetPort != null;
+			if(!hasSource || !hasTarget) {
+				seg.flowRate = 0;
 				continue;
 			}
 
-			double transferable = Math.min(pumpRate, Math.min(source.fluidLevel, Math.max(0.0, target.tankCapacity - target.fluidLevel)));
+			double sourceAvail = sourceNet != null ? sourceNet.fluidLevel : sourcePort.bufferLevel;
+			double targetFree = targetNet != null ? (targetNet.tankCapacity - targetNet.fluidLevel) : (portBufferCapacity - targetPort.bufferLevel);
+			double transferable = Math.min(pumpRate, Math.min(sourceAvail, targetFree));
 			if(transferable <= 0) {
 				seg.flowRate = 0;
 				continue;
 			}
 
-			source.fluidLevel = Math.max(0.0, source.fluidLevel - transferable);
-			target.fluidLevel = Math.min(target.tankCapacity, target.fluidLevel + transferable);
-
-			// Transfer fluid type from source to target (if target was empty)
-			if(target.fluidId == 0) {
-				target.fluidId = source.fluidId;
+			// Drain from source
+			if(sourceNet != null) {
+				sourceNet.fluidLevel = Math.max(0.0, sourceNet.fluidLevel - transferable);
+				if(sourceNet.fluidLevel <= 0) { sourceNet.fluidId = 0; sourceNet.fluidLevel = 0; }
+			} else {
+				sourcePort.bufferLevel = Math.max(0.0, sourcePort.bufferLevel - transferable);
+				if(sourcePort.bufferLevel <= 0) { sourcePort.bufferFluidId = 0; sourcePort.bufferLevel = 0; }
 			}
 
-			// Clear fluid ID if source becomes empty
-			if(source.fluidLevel <= 0) {
-				source.fluidId = 0;
-				source.fluidLevel = 0;
+			// Fill target
+			if(targetNet != null) {
+				if(targetNet.fluidId == 0) targetNet.fluidId = sourceFluidId;
+				targetNet.fluidLevel = Math.min(targetNet.tankCapacity, targetNet.fluidLevel + transferable);
+			} else {
+				if(targetPort.bufferFluidId == 0) targetPort.bufferFluidId = sourceFluidId;
+				targetPort.bufferLevel = Math.min(portBufferCapacity, targetPort.bufferLevel + transferable);
 			}
 
-			// Calculate flow rate in L/s (positive means pumping)
 			seg.flowRate = (float) (transferable * ticksPerSecond);
-
 			anyChange = true;
 			if(ConfigManager.isDebugMode()) {
-				ResourcesReorganized.getInstance().logInfo("[FluidNetwork] Pump @ " + pumpIndex + " moved " + transferable + " units from net{" + source.memberIndices.size() + "} to net{" + target.memberIndices.size() + "} (flow: " + seg.flowRate + " L/s)");
+				String srcDesc = sourceNet != null ? "net{" + sourceNet.memberIndices.size() + "}" : "port@" + sourcePort.blockIndex;
+				String dstDesc = targetNet != null ? "net{" + targetNet.memberIndices.size() + "}" : "port@" + targetPort.blockIndex;
+				ResourcesReorganized.getInstance().logInfo("[FluidNetwork] Pump @ " + pumpIndex + " moved " + transferable + " units from " + srcDesc + " to " + dstDesc + " (flow: " + seg.flowRate + " L/s)");
 			}
 		}
 
@@ -871,12 +897,13 @@ public class FluidSystemModule extends SystemModule {
 	/**
 	 * Called every tick from {@link #handle}. For each placed fluid port:
 	 * <ul>
-	 *   <li><b>Slot 0 (input):</b> if a filled canister is present, consume it and add
-	 *       {@link ConfigManager#getCapacityPerCanister()} units to the first adjacent network
-	 *       that has free capacity and a matching (or empty) fluid ID.</li>
-	 *   <li><b>Slot 1 (output):</b> if an empty canister is present and the adjacent network
-	 *       has at least one canister-worth of fluid, drain that amount and return a filled
-	 *       canister to slot 1.</li>
+	 *   <li><b>Slot 0 (input):</b> if a filled canister is present and the internal buffer has
+	 *       space for the fluid, consume the canister into the buffer.</li>
+	 *   <li><b>Slot 1 (output):</b> if an empty canister is present and the internal buffer has
+	 *       at least one canister-worth of fluid, drain the buffer into the canister.</li>
+	 *   <li><b>Passive transfer:</b> if the port block is directly face-adjacent to a network
+	 *       member, the buffer and network exchange fluid freely each tick (no pump required).
+	 *       If separated, a pump block must bridge them.</li>
 	 * </ul>
 	 * Only processes ports whose block's active-state flag is set (toggled via logic or R-click).
 	 * Only runs on the server side (the module's {@link #handle} is already server-only).
@@ -884,6 +911,7 @@ public class FluidSystemModule extends SystemModule {
 	private void tickFluidPorts() {
 		if(portSegments.isEmpty()) return;
 		double unitsPerCanister = ConfigManager.getCapacityPerCanister();
+		double bufferCapacity = ConfigManager.getCapacityPerPort();
 		short canisterId = ElementRegistry.FLUID_CANISTER.getId();
 		boolean anyChange = false;
 
@@ -895,60 +923,84 @@ public class FluidSystemModule extends SystemModule {
 			Inventory inv = getInventory(piece);
 			if(inv == null) continue;
 
-			// --- Slot 0 : filled canister → network (drain canister) ---
-			int filledSlotId = FluidMeta.findFilledSlot(inv, canisterId, (short) 0);
-			if(filledSlotId >= 0) {
-				InventorySlot filledSlot = inv.getSlot(filledSlotId);
-				short sourceFluidId = FluidMeta.getFluidId(filledSlot);
-
-				FluidNetwork target = null;
-				for(long nb : faceAdjacentIndices(port.blockIndex)) {
-					for(FluidNetwork net : networks) {
-						if(!net.memberIndices.contains(nb)) continue;
-						if(net.tankCapacity - net.fluidLevel < unitsPerCanister) continue;
-						if(net.fluidId != 0 && net.fluidId != sourceFluidId) continue;
-						target = net;
-						break;
+			// --- Slot 0 : filled canister → internal buffer ---
+			InventorySlot inputSlot = inv.getSlot(INPUT_SLOT_INDEX);
+			if(inputSlot != null && inputSlot.getType() == canisterId && FluidMeta.isFilled(inputSlot)) {
+				short sourceFluidId = FluidMeta.getFluidId(inputSlot);
+				double actualAmount = FluidMeta.getFluidAmount(inputSlot);
+				double slotCapacity = FluidMeta.getCapacity(inputSlot);
+				double spaceInBuffer = bufferCapacity - port.bufferLevel;
+				boolean fluidCompatible = port.bufferFluidId == 0 || port.bufferFluidId == sourceFluidId;
+				double toDrain = Math.min(actualAmount, spaceInBuffer);
+				if(toDrain > 0 && fluidCompatible) {
+					double remaining = actualAmount - toDrain;
+					if(remaining <= 0) {
+						FluidMeta.writeEmpty(inputSlot);
+					} else {
+						FluidMeta.writeFilledSlot(inputSlot, sourceFluidId, remaining, slotCapacity);
 					}
-					if(target != null) break;
-				}
-				if(target != null) {
-					FluidMeta.writeEmpty(filledSlot);
-					target.fluidLevel = Math.min(target.tankCapacity, target.fluidLevel + unitsPerCanister);
-					if(target.fluidId == 0) target.fluidId = sourceFluidId;
+					port.bufferLevel += toDrain;
+					if(port.bufferFluidId == 0) port.bufferFluidId = sourceFluidId;
 					anyChange = true;
 					if(ConfigManager.isDebugMode()) {
-						ResourcesReorganized.getInstance().logInfo("[FluidPort] @ " + port.blockIndex + " drained 1 filled canister (fluid=" + sourceFluidId + ") into network (" + unitsPerCanister + " units). Network now at " + target.fluidLevel + "/" + target.tankCapacity);
+						ResourcesReorganized.getInstance().logInfo("[FluidPort] @ " + port.blockIndex + " drained " + toDrain + " units from canister (fluid=" + sourceFluidId + ") into buffer. Buffer now at " + port.bufferLevel + "/" + bufferCapacity);
 					}
 				}
 			}
 
-			// --- Slot 1 : empty canister → fill from network ---
-			int emptySlotId = FluidMeta.findEmptySlot(inv, canisterId);
-			if(emptySlotId >= 0) {
-				FluidNetwork source = null;
-				for(long nb : faceAdjacentIndices(port.blockIndex)) {
-					for(FluidNetwork net : networks) {
-						if(!net.memberIndices.contains(nb)) continue;
-						if(net.fluidLevel < unitsPerCanister) continue;
-						source = net;
-						break;
-					}
-					if(source != null) break;
+			// --- Slot 1 : internal buffer → empty canister ---
+			int emptySlotId = FluidMeta.findEmptySlot(inv, canisterId, OUTPUT_SLOT_INDEX); // output slot only
+			if(emptySlotId >= 0 && port.bufferLevel >= unitsPerCanister) {
+				short bufferFluidId = port.bufferFluidId;
+				double toFill = Math.min(port.bufferLevel, unitsPerCanister);
+				port.bufferLevel -= toFill;
+				if(port.bufferLevel <= 0) {
+					port.bufferLevel = 0;
+					port.bufferFluidId = 0;
 				}
-				if(source != null) {
-					short networkFluidId = source.fluidId;
-					source.fluidLevel = Math.max(0.0, source.fluidLevel - unitsPerCanister);
-					if(source.fluidLevel <= 0) {
-						source.fluidLevel = 0;
-						source.fluidId = 0;
+				InventorySlot emptySlot = inv.getSlot(emptySlotId);
+				FluidMeta.writeFilledSlot(emptySlot, bufferFluidId, toFill, unitsPerCanister);
+				anyChange = true;
+				if(ConfigManager.isDebugMode()) {
+					ResourcesReorganized.getInstance().logInfo("[FluidPort] @ " + port.blockIndex + " filled canister with " + toFill + " units of fluid=" + bufferFluidId + " from buffer. Buffer now at " + port.bufferLevel + "/" + bufferCapacity);
+				}
+			}
+
+			// --- Passive transfer: buffer ↔ directly adjacent network (no pump required) ---
+			for(long nb : faceAdjacentIndices(port.blockIndex)) {
+				for(FluidNetwork net : networks) {
+					if(!net.memberIndices.contains(nb)) continue;
+
+					// buffer → network: port is inputting fluid into the network
+					if(port.bufferLevel > 0 && net.fluidLevel < net.tankCapacity) {
+						if(net.fluidId == 0 || net.fluidId == port.bufferFluidId) {
+							double transfer = Math.min(port.bufferLevel, net.tankCapacity - net.fluidLevel);
+							port.bufferLevel -= transfer;
+							net.fluidLevel += transfer;
+							if(net.fluidId == 0) net.fluidId = port.bufferFluidId;
+							if(port.bufferLevel <= 0) { port.bufferLevel = 0; port.bufferFluidId = 0; }
+							anyChange = true;
+							if(ConfigManager.isDebugMode()) {
+								ResourcesReorganized.getInstance().logInfo("[FluidPort] @ " + port.blockIndex + " passively pushed " + transfer + " units to adjacent network. Network now at " + net.fluidLevel + "/" + net.tankCapacity);
+							}
+						}
 					}
-					InventorySlot emptySlot = inv.getSlot(emptySlotId);
-					FluidMeta.writeFilledSlot(emptySlot, networkFluidId, unitsPerCanister, unitsPerCanister);
-					anyChange = true;
-					if(ConfigManager.isDebugMode()) {
-						ResourcesReorganized.getInstance().logInfo("[FluidPort] @ " + port.blockIndex + " filled 1 canister with fluid=" + networkFluidId + " (" + unitsPerCanister + " units drained). Network now at " + source.fluidLevel + "/" + source.tankCapacity);
+
+					// network → buffer: port is drawing fluid from the network to fill canisters
+					if(net.fluidLevel > 0 && port.bufferLevel < bufferCapacity) {
+						if(port.bufferFluidId == 0 || port.bufferFluidId == net.fluidId) {
+							double transfer = Math.min(net.fluidLevel, bufferCapacity - port.bufferLevel);
+							net.fluidLevel -= transfer;
+							port.bufferLevel += transfer;
+							if(port.bufferFluidId == 0) port.bufferFluidId = net.fluidId;
+							if(net.fluidLevel <= 0) { net.fluidLevel = 0; net.fluidId = 0; }
+							anyChange = true;
+							if(ConfigManager.isDebugMode()) {
+								ResourcesReorganized.getInstance().logInfo("[FluidPort] @ " + port.blockIndex + " passively pulled " + transfer + " units from adjacent network. Buffer now at " + port.bufferLevel + "/" + bufferCapacity);
+							}
+						}
 					}
+					break; // one network per neighbour
 				}
 			}
 		}
@@ -1027,6 +1079,10 @@ public class FluidSystemModule extends SystemModule {
 	/** One placed {@code FLUID_PORT} block — bridges inventory and the fluid network each tick. */
 	public static final class FluidPortSegment {
 		public final long blockIndex;
+		/** Current fluid units held in this port's internal buffer. */
+		public double bufferLevel;
+		/** Fluid element ID currently in the buffer. 0 = empty. */
+		public short bufferFluidId;
 
 		public FluidPortSegment(long blockIndex) {
 			this.blockIndex = blockIndex;

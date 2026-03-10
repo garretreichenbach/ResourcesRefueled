@@ -5,7 +5,7 @@ import api.listener.events.controller.ClientInitializeEvent;
 import api.mod.StarLoader;
 import api.mod.StarMod;
 import org.schema.schine.resource.ResourceLoader;
-import videogoose.resourcesreorganized.commands.GiveFluidCanisterCommand;
+import videogoose.resourcesreorganized.commands.GiveFluidContainerCommand;
 import videogoose.resourcesreorganized.element.ElementRegistry;
 import videogoose.resourcesreorganized.fuel.EntityFuelManager;
 import videogoose.resourcesreorganized.fuel.StellarFuelManager;
@@ -63,10 +63,6 @@ public final class ResourcesReorganized extends StarMod {
 		ResourceManager.loadResources();
 	}
 
-	private void registerCommands() {
-		StarLoader.registerCommand(new GiveFluidCanisterCommand());
-	}
-
 	@Override
 	public void logInfo(String message) {
 		super.logInfo("[ResourcesReorganized] " + message);
@@ -92,5 +88,9 @@ public final class ResourcesReorganized extends StarMod {
 		if(ConfigManager.isDebugMode()) {
 			logMessage("[DEBUG]: [ResourcesReorganized] " + message);
 		}
+	}
+
+	private void registerCommands() {
+		StarLoader.registerCommand(new GiveFluidContainerCommand());
 	}
 }

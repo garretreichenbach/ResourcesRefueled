@@ -119,7 +119,7 @@ public final class FluidMeta {
 		meta.put(KEY_CAPACITY, capacity);
 		meta.put(KEY_IS_VOLATILE, isVolatile(fluidId));
 
-		String fluidName = resolveFluidName(fluidId);
+		String fluidName = getFluidName(fluidId);
 		meta.put("name", "Fluid Canister (" + fluidName + ")");
 		meta.put("description", String.format("%.1f / %.1f mL of %s%s", amount, capacity, fluidName, isVolatile(fluidId) ? " [Volatile]" : ""));
 	}
@@ -216,13 +216,14 @@ public final class FluidMeta {
 		return -1;
 	}
 
-	// =========================================================================
-	// Internal helpers
-	// =========================================================================
-
-	private static String resolveFluidName(short fluidId) {
-		if(fluidId == 0) return "Empty";
-		if(ElementKeyMap.isValidType(fluidId)) return ElementKeyMap.getInfo(fluidId).getName();
-		return "Unknown Fluid";
+	/**
+	 * Finds an empty-canister in a specific slot only.
+	 * Returns {@code slotIndex} if that slot holds an empty canister, otherwise {@code -1}.
+	 */
+	public static int findEmptySlot(Inventory inventory, short canisterId, int slotIndex) {
+		InventorySlot slot = inventory.getSlot(slotIndex);
+		if(slot == null) return -1;
+		if(slot.getType() != canisterId) return -1;
+		return isEmpty(slot) ? slotIndex : -1;
 	}
 }

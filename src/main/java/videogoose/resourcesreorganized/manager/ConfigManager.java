@@ -6,6 +6,7 @@ import videogoose.resourcesreorganized.ResourcesReorganized;
 public final class ConfigManager {
 
 	private static FileConfiguration mainConfig;
+
 	private static final String[] defaultMainConfig = {
 			"debug_mode: false # If true, enables debug logging and features.",
 			"fuel_cost_per_strength_unit: 0.5 # Heliogen canisters consumed per unit of extractor strength per tick.",
@@ -19,6 +20,7 @@ public final class ConfigManager {
 			"max_fluid_explosion_radius: 15.0 # Maximum radius for explosions caused by fluid tanks. Actual explosion radius scales with fluid level, up to this maximum.",
 			"fluid_tank_explosion_damage: 10000.0 # Damage dealt by explosions caused by fluid tanks.",
 			"pump_transfer_per_tick: 20.0 # Fluid units a pump attempts to move per tick.",
+			"capacity_per_port: 500.0 # Fluid units of internal buffer capacity for each Fluid Port block.",
 	};
 
 	public static void initialize(ResourcesReorganized instance) {
@@ -132,6 +134,14 @@ public final class ConfigManager {
 			return Double.parseDouble(mainConfig.getString("pump_transfer_per_tick"));
 		} catch(Exception e) {
 			return 50.0;
+		}
+	}
+
+	public static double getCapacityPerPort() {
+		try {
+			return Double.parseDouble(mainConfig.getString("capacity_per_port"));
+		} catch(Exception e) {
+			return 500.0;
 		}
 	}
 }

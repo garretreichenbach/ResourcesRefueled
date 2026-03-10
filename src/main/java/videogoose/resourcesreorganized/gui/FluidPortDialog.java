@@ -51,9 +51,6 @@ public class FluidPortDialog extends PlayerInput {
 
 	public static class FluidPortPanel extends GUIInputPanel {
 
-		public static final int INPUT_SLOT_INDEX = 0;
-		public static final int OUTPUT_SLOT_INDEX = 1;
-
 		private final FluidSystemModule module;
 		private final SegmentPiece segmentPiece;
 		private SingleInventorySlotIcon inputSlot;
@@ -74,14 +71,14 @@ public class FluidPortDialog extends PlayerInput {
 			StashInventory inventory = (StashInventory) module.getInventory(segmentPiece);
 			inventory.setSlotLimit(2);
 
-			inputSlot = new SingleInventorySlotIcon((GameClientState) getState(), inventory, INPUT_SLOT_INDEX, "INPUT");
+			inputSlot = new SingleInventorySlotIcon((GameClientState) getState(), inventory, FluidSystemModule.INPUT_SLOT_INDEX, "INPUT");
 			inputSlot.onInit();
 			contentPane.getContent(0).attach(inputSlot);
 			inputSlot.getPos().x += 50;
 			inputSlot.getPos().y += 50;
 			inputSlot.setDropHandler(overlayElement -> overlayElement.getType() == ElementRegistry.FLUID_CANISTER.getId() || overlayElement.getType() == ElementRegistry.HELIOGEN_PLASMA.getId());
 
-			outputSlot = new SingleInventorySlotIcon((GameClientState) getState(), inventory, OUTPUT_SLOT_INDEX, "OUTPUT");
+			outputSlot = new SingleInventorySlotIcon((GameClientState) getState(), inventory, FluidSystemModule.OUTPUT_SLOT_INDEX, "OUTPUT");
 			outputSlot.onInit();
 			contentPane.getContent(0).attach(outputSlot);
 			outputSlot.getPos().x += 300;
