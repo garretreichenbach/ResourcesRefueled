@@ -22,26 +22,11 @@ public final class ItemLogisticsSystemModule implements ItemLogisticsApi, ItemMu
 	private final ItemLogisticsTickProcessor processor;
 	private final ItemLogisticsDiagnostics diagnostics;
 
-	public ItemLogisticsSystemModule(int queueCapacity,
-	                                 int transfersPerTick,
-	                                 int retryDelayTicks,
-	                                 int maxAttempts,
-	                                 BooleanSupplier failOpenSupplier,
-	                                 ItemTransferExecutor transferExecutor) {
-		this.graph = new ItemLogisticsGraph();
-		this.queue = new ItemTransferQueue(queueCapacity);
-		this.diagnostics = new ItemLogisticsDiagnostics();
-		this.processor = new ItemLogisticsTickProcessor(
-				queue,
-				new DeferredTransferQueue(),
-				new TransferAttemptLedger(),
-				new ItemRoutePlanner(graph),
-				transferExecutor,
-				new LogisticsFailOpenPolicy(failOpenSupplier),
-				diagnostics,
-				transfersPerTick,
-				retryDelayTicks,
-				maxAttempts);
+	public ItemLogisticsSystemModule(int queueCapacity, int transfersPerTick, int retryDelayTicks, int maxAttempts, BooleanSupplier failOpenSupplier, ItemTransferExecutor transferExecutor) {
+		graph = new ItemLogisticsGraph();
+		queue = new ItemTransferQueue(queueCapacity);
+		diagnostics = new ItemLogisticsDiagnostics();
+		processor = new ItemLogisticsTickProcessor(queue, new DeferredTransferQueue(), new TransferAttemptLedger(), new ItemRoutePlanner(graph), transferExecutor, new LogisticsFailOpenPolicy(failOpenSupplier), diagnostics, transfersPerTick, retryDelayTicks, maxAttempts);
 	}
 
 	@Override

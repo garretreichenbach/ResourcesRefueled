@@ -25,16 +25,7 @@ public final class ItemLogisticsTickProcessor {
 	private final int retryDelayTicks;
 	private final int maxAttempts;
 
-	public ItemLogisticsTickProcessor(ItemTransferQueue queue,
-	                                  DeferredTransferQueue deferredQueue,
-	                                  TransferAttemptLedger attemptLedger,
-	                                  ItemRoutePlanner routePlanner,
-	                                  ItemTransferExecutor transferExecutor,
-	                                  LogisticsFailOpenPolicy failOpenPolicy,
-	                                  ItemLogisticsDiagnostics diagnostics,
-	                                  int transfersPerTick,
-	                                  int retryDelayTicks,
-	                                  int maxAttempts) {
+	public ItemLogisticsTickProcessor(ItemTransferQueue queue, DeferredTransferQueue deferredQueue, TransferAttemptLedger attemptLedger, ItemRoutePlanner routePlanner, ItemTransferExecutor transferExecutor, LogisticsFailOpenPolicy failOpenPolicy, ItemLogisticsDiagnostics diagnostics, int transfersPerTick, int retryDelayTicks, int maxAttempts) {
 		this.queue = queue;
 		this.deferredQueue = deferredQueue;
 		this.attemptLedger = attemptLedger;
@@ -77,9 +68,7 @@ public final class ItemLogisticsTickProcessor {
 			return retryOrFail(request, currentTick, "no-route");
 		}
 
-		ItemTransferReceipt result = failOpenPolicy.execute(
-				() -> transferExecutor.execute(request, route.get(), currentTick),
-				() -> ItemTransferReceipt.of(request, ItemTransferOutcome.FALLBACK_TO_VANILLA, 0, "fail-open"));
+		ItemTransferReceipt result = failOpenPolicy.execute(() -> transferExecutor.execute(request, route.get(), currentTick), () -> ItemTransferReceipt.of(request, ItemTransferOutcome.FALLBACK_TO_VANILLA, 0, "fail-open"));
 
 		if(result.getOutcome() == ItemTransferOutcome.SUCCESS) {
 			attemptLedger.clear(request);

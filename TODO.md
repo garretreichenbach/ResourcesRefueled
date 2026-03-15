@@ -88,6 +88,7 @@ Passive Heliogen supply tied to star proximity, no zone maps required.
 - ✅ `FluidNetwork` per-network fluidId, fluidLevel, tankCapacity
 - ✅ Placement/removal topology logic implemented
 - ✅ Serialisation / deserialisation implemented
+- ✅ Tick logic decomposed for readability: `FluidPumpTickProcessor`, `FluidPortTickProcessor`, `FluidTopologyUtils`
 
 ---
 

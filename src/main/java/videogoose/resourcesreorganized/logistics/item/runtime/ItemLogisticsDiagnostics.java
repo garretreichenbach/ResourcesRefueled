@@ -36,12 +36,7 @@ public final class ItemLogisticsDiagnostics {
 	}
 
 	public String snapshot() {
-		return "queued=" + queued.get() +
-				" completed=" + completed.get() +
-				" partial=" + partial.get() +
-				" deferred=" + deferred.get() +
-				" noRoute=" + noRoute.get() +
-				" failed=" + failed.get();
+		return "queued=" + queued.get() + " completed=" + completed.get() + " partial=" + partial.get() + " deferred=" + deferred.get() + " noRoute=" + noRoute.get() + " failed=" + failed.get();
 	}
 }
 
