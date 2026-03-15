@@ -8,7 +8,6 @@ import org.schema.game.common.controller.ManagedUsableSegmentController;
 import org.schema.game.common.controller.SegmentController;
 import org.schema.game.common.controller.elements.ManagerContainer;
 import org.schema.game.common.data.SegmentPiece;
-import org.schema.game.common.data.element.Element;
 import org.schema.game.common.data.element.ElementCollection;
 import org.schema.game.common.data.element.ElementKeyMap;
 import org.schema.game.common.data.player.inventory.Inventory;
@@ -17,10 +16,8 @@ import org.schema.schine.graphicsengine.forms.BoundingBox;
 import videogoose.resourcesreorganized.ResourcesReorganized;
 import videogoose.resourcesreorganized.data.FluidMeta;
 import videogoose.resourcesreorganized.element.ElementRegistry;
+import videogoose.resourcesreorganized.logistics.fluid.*;
 import videogoose.resourcesreorganized.manager.ConfigManager;
-import videogoose.resourcesreorganized.logistics.fluid.FluidPortTickProcessor;
-import videogoose.resourcesreorganized.logistics.fluid.FluidPumpTickProcessor;
-import videogoose.resourcesreorganized.logistics.fluid.FluidTopologyUtils;
 
 import java.io.IOException;
 import java.util.*;
@@ -117,180 +114,13 @@ public class FluidSystemModule extends SystemModule {
 	 * @param blockType   Element ID of the placed block.
 	 */
 	public void onPlace(long index, short blockType) {
-		if(blockType == ElementRegistry.FLUID_TANK.getId()) {
-			tankSegments.put(index, new FluidTankSegment(index, blockType));
-		} else if(blockType == ElementRegistry.FLUID_PORT.getId()) {
-			// Fluid ports are tracked separately — they are not network members but
-			// sit adjacent to networks and transfer fluid via their inventory each tick.
-			portSegments.put(index, new FluidPortSegment(index));
+		boolean changed = FluidTopologyMutationService.onPlace(index, blockType, segmentController, tankSegments, pipeSegments, portSegments, networks, ConfigManager.isDebugMode() ? message -> ResourcesReorganized.getInstance().logInfo(message) : null);
+		if(changed) {
 			flagUpdatedData();
-			return;
-		} else if(ElementRegistry.isPipe(blockType)) {
-			// If this is a plain/vanilla pipe piece and it is not connected to any functional
-			// component (tank, pump/valve/filter) or an existing network with capacity, treat
-			// it as decorative and don't allocate memory for it.
-			boolean isFunctional = shouldTreatAsFunctionalPipe(index, blockType);
-			if(!isFunctional) {
-				// Decorative pipe — ignore
-				return;
-			}
-			pipeSegments.put(index, new FluidPipeSegment(index, blockType));
-		} else {
-			return; // not a fluid-network block
-		}
-
-		// Pump/valve/filter blocks act as network boundaries — they are tracked in
-		// pipeSegments but are NOT members of any FluidNetwork. They connect distinct
-		// networks without merging them, so that the pump logic can see two separate
-		// networks on each side.
-		boolean isDevice = isNetworkDevice(blockType);
-		if(isDevice) {
-			// Don't touch the network topology at all — just register the block.
-			flagUpdatedData();
-			if(ConfigManager.isDebugMode()) {
-				ResourcesReorganized.getInstance().logInfo("[FluidNetwork] Placed device " + blockType + " @ " + index + " (boundary, not merged)");
-			}
-			return;
-		}
-
-		// Collect all networks that are adjacent to this new block.
-		// Do NOT cross device blocks — they are boundaries.
-		Set<Long> neighbours = faceAdjacentIndices(index);
-		List<FluidNetwork> adjacentNetworks = new ArrayList<>();
-		for(FluidNetwork net : networks) {
-			for(long nb : neighbours) {
-				// Skip device blocks as connectivity bridges.
-				if(pipeSegments.containsKey(nb) && isNetworkDevice(pipeSegments.get(nb).blockType)) continue;
-				if(net.memberIndices.contains(nb)) {
-					adjacentNetworks.add(net);
-					break;
-				}
-			}
-		}
-
-		// Merge all adjacent networks + the new block into a single network.
-		FluidNetwork merged = new FluidNetwork();
-		merged.memberIndices.add(index);
-
-		// Determine the fluid ID for the merged network:
-		// - If no adjacent networks have fluid, merged network starts empty (fluidId = 0)
-		// - If any adjacent network has fluid, use that fluid type
-		// - If multiple networks have different fluid types, use the one with the most fluid
-		short mergedFluidId = 0;
-		double maxFluidLevel = 0;
-
-		for(FluidNetwork net : adjacentNetworks) {
-			merged.memberIndices.addAll(net.memberIndices);
-
-			// Track which fluid type to use based on which network has the most fluid
-			if(net.fluidLevel > maxFluidLevel) {
-				maxFluidLevel = net.fluidLevel;
-				mergedFluidId = net.fluidId;
-			}
-
-			// Only add fluid if it matches the dominant fluid type (or if merged is still empty)
-			if(mergedFluidId == 0 || net.fluidId == mergedFluidId || net.fluidId == 0) {
-				merged.fluidLevel += net.fluidLevel;
-			} else {
-				// Incompatible fluid types - discard the lesser fluid
-				if(ConfigManager.isDebugMode()) {
-					ResourcesReorganized.getInstance().logInfo("[FluidNetwork] Discarding " + net.fluidLevel + "L of fluid type " + net.fluidId + " due to incompatibility with dominant type " + mergedFluidId);
-				}
-			}
-
-			networks.remove(net);
-		}
-
-		merged.fluidId = mergedFluidId;
-		recalculateNetworkCapacity(merged);
-		// Clamp fluid level to new capacity
-		merged.fluidLevel = Math.min(merged.fluidLevel, merged.tankCapacity);
-
-		// If we lost fluid due to capacity reduction, clear the fluid ID if empty
-		if(merged.fluidLevel <= 0) {
-			merged.fluidId = 0;
-			merged.fluidLevel = 0;
-		}
-
-		networks.add(merged);
-
-		flagUpdatedData();
-		if(ConfigManager.isDebugMode()) {
-			ResourcesReorganized.getInstance().logInfo("[FluidNetwork] Placed " + blockType + " @ " + index + " — networks: " + networks.size() + ", merged capacity: " + merged.tankCapacity + ", fluid: " + merged.fluidLevel + "L of type " + merged.fluidId);
 		}
 	}
 
-	/**
-	 * Returns true if the given block type is a "device" (pump/valve/filter) that
-	 * acts as a network boundary rather than a passive conduit.
-	 */
-	private boolean isNetworkDevice(short blockType) {
-		return blockType == ElementRegistry.PIPE_PUMP.getId() || blockType == ElementRegistry.PIPE_VALVE.getId() || blockType == ElementRegistry.PIPE_FILTER.getId();
-	}
-
-	/**
-	 * Heuristic that determines whether a placed pipe should be treated as part of
-	 * the functional fluid network, or ignored as decorative.
-	 * <p>
-	 * Current rules (conservative):
-	 * - Any mod pipe-type that has behaviour (pump/valve/filter) is always considered functional.
-	 * - A pipe is functional if any face-adjacent neighbour is a tank block tracked by this module.
-	 * - A pipe is functional if any face-adjacent neighbour is a tracked pipe block that itself
-	 *   belongs to an existing network which has non-zero capacity (i.e. connected to tanks), or
-	 *   if that neighbour is a mod functional pipe (pump/valve/filter).
-	 * <p>
-	 * This avoids creating in-memory networks for isolated vanilla pipe decorations while
-	 * still picking up pipes that are connected to actual fluid storage or devices.
-	 */
-	private boolean shouldTreatAsFunctionalPipe(long index, short blockType) {
-		// Always treat our own functional devices as real.
-		short valveId = ElementRegistry.PIPE_VALVE.getId();
-		short pumpId = ElementRegistry.PIPE_PUMP.getId();
-		short filterId = ElementRegistry.PIPE_FILTER.getId();
-		if(blockType == valveId || blockType == pumpId || blockType == filterId) {
-			return true;
-		}
-
-		Set<Long> neighbours = faceAdjacentIndices(index);
-		for(long nb : neighbours) {
-			// Adjacent tank -> functional
-			if(tankSegments.containsKey(nb)) {
-				return true;
-			}
-
-			// Adjacent tracked pipe that is a functional device -> functional
-			FluidPipeSegment seg = pipeSegments.get(nb);
-			if(seg != null) {
-				if(seg.blockType == valveId || seg.blockType == pumpId || seg.blockType == filterId) {
-					return true;
-				}
-			}
-
-			// If neighbour is part of an existing network that has capacity, treat as functional
-			for(FluidNetwork net : networks) {
-				if(net.memberIndices.contains(nb)) {
-					if(net.tankCapacity > 0) {
-						return true;
-					}
-					// Also treat as functional if the existing network contains any functional devices
-					for(long member : net.memberIndices) {
-						FluidPipeSegment ps = pipeSegments.get(member);
-						if(ps != null && (ps.blockType == valveId || ps.blockType == pumpId || ps.blockType == filterId)) {
-							return true;
-						}
-					}
-				}
-			}
-
-			// New: check raw world block type for neighbours and treat as functional if
-			// the neighbour can interact with fluids (condenser/refinery or our blocks).
-			SegmentPiece piece = segmentController.getSegmentBuffer().getPointUnsave(nb);
-			if(piece != null && piece.getType() != Element.TYPE_NONE && ElementRegistry.canInteractWithFluid(piece.getType())) {
-				return true;
-			}
-		}
-		return false;
-	}
+	// Topology mutation internals moved to FluidTopologyMutationService.
 
 	// =========================================================================
 	// Placement / removal (called by SegmentPieceEventHandler)
@@ -304,67 +134,9 @@ public class FluidSystemModule extends SystemModule {
 	 * @param blockType Element ID of the removed block.
 	 */
 	public void onRemove(long index, short blockType) {
-		// Fluid ports are tracked separately and are not network members.
-		if(portSegments.remove(index) != null) {
+		boolean changed = FluidTopologyMutationService.onRemove(index, blockType, tankSegments, pipeSegments, portSegments, networks, ConfigManager.isDebugMode() ? message -> ResourcesReorganized.getInstance().logInfo(message) : null);
+		if(changed) {
 			flagUpdatedData();
-			return;
-		}
-
-		boolean wasTank = tankSegments.remove(index) != null;
-		boolean wasPipe = !wasTank && pipeSegments.remove(index) != null;
-		if(!wasTank && !wasPipe) return;
-
-		// Find the network this block belonged to.
-		FluidNetwork ownerNetwork = null;
-		for(FluidNetwork net : networks) {
-			if(net.memberIndices.contains(index)) {
-				ownerNetwork = net;
-				break;
-			}
-		}
-		if(ownerNetwork == null) {
-			flagUpdatedData();
-			return;
-		}
-
-		double savedFluid = ownerNetwork.fluidLevel;
-		short savedFluidId = ownerNetwork.fluidId;
-		networks.remove(ownerNetwork);
-		ownerNetwork.memberIndices.remove(index);
-
-		if(ownerNetwork.memberIndices.isEmpty()) {
-			// Nothing left — fluid is lost (pipe/tank was destroyed with no neighbours).
-			flagUpdatedData();
-			return;
-		}
-
-		// Re-flood the remaining members into one or more new networks.
-		List<FluidNetwork> newNetworks = floodPartition(ownerNetwork.memberIndices);
-
-		// Distribute fluid proportionally by new capacity so none is created or destroyed.
-		double totalNewCapacity = 0;
-		for(FluidNetwork net : newNetworks) {
-			recalculateNetworkCapacity(net);
-			totalNewCapacity += net.tankCapacity;
-		}
-		for(FluidNetwork net : newNetworks) {
-			double fraction = (totalNewCapacity > 0) ? net.tankCapacity / totalNewCapacity : 1.0 / newNetworks.size();
-			net.fluidLevel = Math.min(savedFluid * fraction, net.tankCapacity);
-
-			// Preserve the fluid ID from the original network
-			net.fluidId = savedFluidId;
-
-			// Clear fluid ID if the network has no fluid
-			if(net.fluidLevel <= 0) {
-				net.fluidId = 0;
-				net.fluidLevel = 0;
-			}
-		}
-
-		networks.addAll(newNetworks);
-		flagUpdatedData();
-		if(ConfigManager.isDebugMode()) {
-			ResourcesReorganized.getInstance().logInfo("[FluidNetwork] Removed " + blockType + " @ " + index + " — split into " + newNetworks.size() + " network(s).");
 		}
 	}
 
@@ -380,117 +152,16 @@ public class FluidSystemModule extends SystemModule {
 		//We just need to ensure that the parent method doesnt do anything, since the event handler will call onRemove() with the full block type.
 	}
 
-	/**
-	 * Partitions a set of block indices into connected components using BFS.
-	 * A block is connected to its face-adjacent neighbours that are also in the set,
-	 * <em>unless</em> the neighbour is a network device (pump/valve/filter), which acts
-	 * as a boundary and does not propagate connectivity.
-	 *
-	 * @param members The full set of indices to partition (not modified).
-	 * @return One {@link FluidNetwork} per connected component.
-	 */
-	private List<FluidNetwork> floodPartition(Set<Long> members) {
-		Set<Long> unvisited = new HashSet<>(members);
-		List<FluidNetwork> result = new ArrayList<>();
-
-		while(!unvisited.isEmpty()) {
-			FluidNetwork component = new FluidNetwork();
-			Queue<Long> queue = new ArrayDeque<>();
-			long seed = unvisited.iterator().next();
-			// Device blocks themselves are not included in any network.
-			FluidPipeSegment seedSeg = pipeSegments.get(seed);
-			if(seedSeg != null && isNetworkDevice(seedSeg.blockType)) {
-				unvisited.remove(seed);
-				continue; // skip — device blocks are not part of networks
-			}
-			queue.add(seed);
-			unvisited.remove(seed);
-
-			while(!queue.isEmpty()) {
-				long current = queue.poll();
-				component.memberIndices.add(current);
-				for(long nb : faceAdjacentIndices(current)) {
-					if(unvisited.contains(nb)) {
-						// Don't cross device blocks.
-						FluidPipeSegment nbSeg = pipeSegments.get(nb);
-						if(nbSeg != null && isNetworkDevice(nbSeg.blockType)) continue;
-						unvisited.remove(nb);
-						queue.add(nb);
-					}
-				}
-			}
-			if(!component.memberIndices.isEmpty()) result.add(component);
-		}
-		return result;
-	}
-
-	// =========================================================================
-	// Connectivity helpers
-	// =========================================================================
-
-	/**
-	 * Sets {@link FluidNetwork#tankCapacity} based on how many of the network's
-	 * member indices are registered tank segments.
-	 */
-	private void recalculateNetworkCapacity(FluidNetwork net) {
-		int tankCount = 0;
-		for(long idx : net.memberIndices) {
-			if(tankSegments.containsKey(idx)) tankCount++;
-		}
-		net.tankCapacity = tankCount * ConfigManager.getCapacityPerTank();
-	}
+	// Topology partition/capacity helpers moved to FluidTopologyMutationService.
 
 	@Override
 	public void onTagSerialize(PacketWriteBuffer buffer) throws IOException {
-		// Note: FluidPipeSegment.flowRate is not serialized as it's transient data
-		// that gets recalculated every tick in handle()
-		buffer.writeInt(networks.size());
-		for(FluidNetwork net : networks) {
-			buffer.writeShort(net.fluidId);
-			buffer.writeDouble(net.fluidLevel);
-			buffer.writeInt(net.memberIndices.size());
-			for(long idx : net.memberIndices) {
-				buffer.writeLong(idx);
-				// Write block type so we can rebuild tankSegments/pipeSegments on deserialise.
-				short type;
-				if(tankSegments.containsKey(idx)) {
-					type = tankSegments.get(idx).blockType;
-				} else if(pipeSegments.containsKey(idx)) {
-					type = pipeSegments.get(idx).blockType;
-				} else {
-					type = 0;
-				}
-				buffer.writeShort(type);
-			}
-		}
+		FluidNetworkCodec.serialize(buffer, networks, tankSegments, pipeSegments);
 	}
 
 	@Override
 	public void onTagDeserialize(PacketReadBuffer buffer) throws IOException {
-		tankSegments.clear();
-		pipeSegments.clear();
-		networks.clear();
-
-		int networkCount = buffer.readInt();
-		for(int n = 0; n < networkCount; n++) {
-			FluidNetwork net = new FluidNetwork();
-			net.fluidId = buffer.readShort();
-			net.fluidLevel = buffer.readDouble();
-			int memberCount = buffer.readInt();
-			for(int m = 0; m < memberCount; m++) {
-				long idx = buffer.readLong();
-				short type = buffer.readShort();
-				net.memberIndices.add(idx);
-				if(type == ElementRegistry.FLUID_TANK.getId()) {
-					tankSegments.put(idx, new FluidTankSegment(idx, type));
-				} else if(ElementRegistry.isPipe(type)) {
-					pipeSegments.put(idx, new FluidPipeSegment(idx, type));
-				}
-			}
-			recalculateNetworkCapacity(net);
-			net.fluidLevel = Math.min(net.fluidLevel, net.tankCapacity);
-			networks.add(net);
-		}
+		FluidNetworkCodec.deserialize(buffer, networks, tankSegments, pipeSegments);
 	}
 
 	// =========================================================================
@@ -888,7 +559,7 @@ public class FluidSystemModule extends SystemModule {
 		public final Set<Long> memberIndices = new HashSet<>();
 		/** Current stored fluid units. Always ≤ {@link #tankCapacity}. */
 		public double fluidLevel;
-		/** Cached capacity — recalculated by {@link FluidSystemModule#recalculateNetworkCapacity}. */
+		/** Cached capacity — recalculated by topology mutation/codec services. */
 		public double tankCapacity;
 		/** The fluid element ID this network contains (matches the fluid_id metadata on canisters). 0 = empty/no fluid. */
 		public short fluidId;
