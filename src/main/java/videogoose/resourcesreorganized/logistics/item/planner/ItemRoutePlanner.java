@@ -1,20 +1,9 @@
 package videogoose.resourcesreorganized.logistics.item.planner;
 
-import videogoose.resourcesreorganized.logistics.item.graph.ItemEdge;
-import videogoose.resourcesreorganized.logistics.item.graph.ItemLogisticsGraph;
-import videogoose.resourcesreorganized.logistics.item.graph.ItemNode;
-import videogoose.resourcesreorganized.logistics.item.graph.ItemNodeType;
-import videogoose.resourcesreorganized.logistics.item.graph.TransportFamily;
+import videogoose.resourcesreorganized.logistics.item.graph.*;
 import videogoose.resourcesreorganized.logistics.item.model.ItemTransferRequest;
 
-import java.util.ArrayDeque;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Optional;
-import java.util.Map;
-import java.util.Set;
-import java.util.HashSet;
-import java.util.LinkedList;
+import java.util.*;
 
 public final class ItemRoutePlanner {
 
@@ -146,20 +135,6 @@ public final class ItemRoutePlanner {
 		return false;
 	}
 
-	private boolean isNodeAllowed(ItemNode node, ItemTransferRequest request) {
-		if(!node.supportsChannel(request.getChannel())) {
-			return false;
-		}
-		TransportFamily family = request.getTransportFamily();
-		if(family == TransportFamily.CONVEYOR && node.getTransportFamily() == TransportFamily.TUBE) {
-			return false;
-		}
-		if(family == TransportFamily.TUBE && node.getTransportFamily() == TransportFamily.CONVEYOR) {
-			return false;
-		}
-		return true;
-	}
-
 	private static boolean isEdgeAllowed(ItemEdge edge, ItemTransferRequest request) {
 		if(!edge.supportsChannel(request.getChannel())) {
 			return false;
@@ -177,11 +152,20 @@ public final class ItemRoutePlanner {
 			if(edge.getTransportFamily() == TransportFamily.CONVEYOR) {
 				return false;
 			}
-			if(edge.isVertical() && !request.isAllowVertical()) {
-				return false;
-			}
+			return !edge.isVertical() || request.isAllowVertical();
 		}
 		return true;
+	}
+
+	private boolean isNodeAllowed(ItemNode node, ItemTransferRequest request) {
+		if(!node.supportsChannel(request.getChannel())) {
+			return false;
+		}
+		TransportFamily family = request.getTransportFamily();
+		if(family == TransportFamily.CONVEYOR && node.getTransportFamily() == TransportFamily.TUBE) {
+			return false;
+		}
+		return family != TransportFamily.TUBE || node.getTransportFamily() != TransportFamily.CONVEYOR;
 	}
 }
 
