@@ -19,6 +19,10 @@ This package contains a mixin-independent item logistics core you can build out 
 
 Inventory ports are optional for conveyor extraction: requests can allow direct-adjacent conveyor endpoints (`allowDirectInventoryAdjacency=true`) and only require ports when advanced port-only behavior is desired (`requireInventoryPort=true`).
 
+Per-endpoint policy placeholders are available via `policy` + `runtime/ItemEndpointPolicyRegistry` (`NONE`, `FILTER`, `SPLIT`, `COMBINE`). Ingress can derive source/destination port requirements independently from these policies.
+
+Server config key: `item_conveyor_require_port_for_advanced` can globally force port-required conveyor ingress while advanced port logic is being tested.
+
 Channel masks are bitmasks (`-1` means all channels). Example: mask `0b0010` accepts channel `1` only.
 
 ## Quick try

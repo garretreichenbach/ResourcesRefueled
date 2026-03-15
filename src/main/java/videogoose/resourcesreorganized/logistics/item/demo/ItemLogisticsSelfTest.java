@@ -43,10 +43,11 @@ public final class ItemLogisticsSelfTest {
 		ItemTransferRequest beltChannel0 = new ItemTransferRequest("beltTap", "beltDst", (short) 5, 0, 20, 0, true, TransportFamily.CONVEYOR, 0, false, false, true, false);
 		ItemTransferRequest beltChannel1 = new ItemTransferRequest("beltTap", "beltDst", (short) 5, 0, 20, 0, true, TransportFamily.CONVEYOR, 1, false, false, true, false);
 		ItemTransferRequest beltPortRequired = new ItemTransferRequest("beltTap", "beltDst", (short) 5, 0, 5, 0, true, TransportFamily.CONVEYOR, 0, false, false, true, true);
+		ItemTransferRequest beltSourcePortRequired = new ItemTransferRequest("beltTap", "beltDst", (short) 5, 0, 5, 0, true, TransportFamily.CONVEYOR, 0, false, false, true, true, false);
 		ItemTransferRequest tubeVertical = new ItemTransferRequest("src", "tubeDst", (short) 5, 0, 40, 0, true, TransportFamily.TUBE, -1, true, true);
 		ItemTransferRequest invalidVerticalBelt = new ItemTransferRequest("src", "tubeDst", (short) 5, 0, 5, 0, true, TransportFamily.CONVEYOR, -1, false, false);
 
-		if(!module.enqueue(beltChannel0) || !module.enqueue(beltChannel1) || !module.enqueue(beltPortRequired) || !module.enqueue(tubeVertical) || !module.enqueue(invalidVerticalBelt)) {
+		if(!module.enqueue(beltChannel0) || !module.enqueue(beltChannel1) || !module.enqueue(beltPortRequired) || !module.enqueue(beltSourcePortRequired) || !module.enqueue(tubeVertical) || !module.enqueue(invalidVerticalBelt)) {
 			throw new IllegalStateException("failed to enqueue one or more self-test requests");
 		}
 

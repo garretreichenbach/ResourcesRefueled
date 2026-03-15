@@ -12,6 +12,7 @@ public final class ConfigManager {
 			"logistics_probe_enabled: false # If true, enables temporary inventory mutation probe logging mixins.",
 			"logistics_intercept_enabled: false # If true, logistics mixins may intercept inventory mutations instead of allowing vanilla behavior.",
 			"logistics_fail_open: true # If true, logistics hooks fail open and allow vanilla inventory behavior on errors.",
+			"item_conveyor_require_port_for_advanced: false # If true, conveyor ingress requests require inventory-port endpoints (useful once advanced port filtering/splitting is enabled).",
 			"item_logistics_transfers_per_tick: 24 # Max queued item transfer operations the logistics runtime processes per tick.",
 			"item_logistics_max_queue_size: 2048 # Max queued item transfer requests before new requests are rejected.",
 			"item_logistics_retry_delay_ticks: 10 # Delay (in ticks) before retrying transfers that had no route or temporary failure.",
@@ -77,6 +78,14 @@ public final class ConfigManager {
 			return Boolean.parseBoolean(mainConfig.getString("logistics_fail_open"));
 		} catch(Exception e) {
 			return true;
+		}
+	}
+
+	public static boolean isItemConveyorRequirePortForAdvanced() {
+		try {
+			return Boolean.parseBoolean(mainConfig.getString("item_conveyor_require_port_for_advanced"));
+		} catch(Exception e) {
+			return false;
 		}
 	}
 

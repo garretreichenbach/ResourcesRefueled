@@ -12,6 +12,7 @@ fluid-aware systems). The roadmap below has been updated to reflect the current 
 - ✅ Initial mixin probes wired: `inventory.InventoryMutationMixin`, `inventory.RemoteSectorMutationMixin`
 - ✅ Core hook coverage added: `Inventory.inc`, `Inventory.put(int, short, int, int)`, `Inventory.handleReceived`, `Inventory.deserialize`, `Inventory.deserializeSlot`, `Inventory.doSwitchSlotsOrCombine`
 - ✅ World-spawn hook coverage added: `RemoteSector.addItem(Vector3f, short, int, int)`
+- ✅ `Inventory.inc` / `Inventory.put` hooks can now cancel vanilla mutation paths when logistics interception succeeds
 - ⬜ Run validation scenarios (pickup, drag/combine, crafting/extractor output, admin give, save/load)
 
 ### 0.5. 🚧 Item logistics core (pre-mixin)
@@ -21,6 +22,8 @@ fluid-aware systems). The roadmap below has been updated to reflect the current 
 - ✅ Fail-open policy and runtime tuning config keys added
 - ✅ Module lifecycle bootstrapped via `ItemLogisticsManager` in `ResourcesReorganized`
 - ✅ Dual transport semantics implemented: conveyor channels + no vertical + optional ports, tube vertical + pump-gated routing
+- ✅ Probe ingress now infers adjacent conveyor endpoints from inventory mutations; optional config can force port endpoints (`item_conveyor_require_port_for_advanced`)
+- ✅ Per-endpoint advanced policy placeholders added (`ItemEndpointPolicyRegistry`), with independent source/destination port requirements
 - ⬜ Replace in-memory executor with live StarMade inventory adapter
 
 ---

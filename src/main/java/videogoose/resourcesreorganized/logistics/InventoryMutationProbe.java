@@ -23,12 +23,10 @@ public final class InventoryMutationProbe {
 
 	public static void logInc(Inventory inventory, int slot, short type, int count) {
 		log("inc", inventory, "slot=" + slot + " type=" + type + " count=" + count);
-		ItemMutationIngressAdapter.captureInventoryMutation("inc", inventory, type, count, -1);
 	}
 
 	public static void logPut(Inventory inventory, int slot, short type, int count, int meta) {
 		log("put", inventory, "slot=" + slot + " type=" + type + " count=" + count + " meta=" + meta);
-		ItemMutationIngressAdapter.captureInventoryMutation("put", inventory, type, count, meta);
 	}
 
 	public static void logHandleReceived(Inventory inventory, InventoryMultMod mod, Object inventoryInterface) {

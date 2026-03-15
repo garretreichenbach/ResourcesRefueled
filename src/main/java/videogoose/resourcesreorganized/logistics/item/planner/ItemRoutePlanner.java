@@ -120,7 +120,8 @@ public final class ItemRoutePlanner {
 	}
 
 	private static boolean isEndpointAllowed(ItemNode node, boolean source, ItemTransferRequest request) {
-		if(request.isRequireInventoryPort()) {
+		boolean endpointRequiresPort = source ? request.isSourceRequiresInventoryPort() : request.isDestinationRequiresInventoryPort();
+		if(endpointRequiresPort) {
 			return node.getType() == ItemNodeType.INVENTORY_PORT;
 		}
 		if(node.getType() == ItemNodeType.INVENTORY_PORT) {
