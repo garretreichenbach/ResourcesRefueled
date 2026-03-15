@@ -12,6 +12,10 @@ public final class ConfigManager {
 			"logistics_probe_enabled: false # If true, enables temporary inventory mutation probe logging mixins.",
 			"logistics_intercept_enabled: false # If true, logistics mixins may intercept inventory mutations instead of allowing vanilla behavior.",
 			"logistics_fail_open: true # If true, logistics hooks fail open and allow vanilla inventory behavior on errors.",
+			"item_logistics_transfers_per_tick: 24 # Max queued item transfer operations the logistics runtime processes per tick.",
+			"item_logistics_max_queue_size: 2048 # Max queued item transfer requests before new requests are rejected.",
+			"item_logistics_retry_delay_ticks: 10 # Delay (in ticks) before retrying transfers that had no route or temporary failure.",
+			"item_logistics_max_attempts: 6 # Maximum attempts for a transfer request before it is marked failed.",
 			"fuel_cost_per_strength_unit: 0.5 # Heliogen canisters consumed per unit of extractor strength per tick.",
 			"fueled_extraction_bonus: 0.5 # Fraction of additional output added per consumed canister when extractors are fueled with Heliogen (e.g. 0.5 = +50% resources per canister used).",
 			"condenser_base_output: 4 # Bonus Heliogen Plasma units produced per cycle at proximity 1.0 next to a normal star.",
@@ -73,6 +77,38 @@ public final class ConfigManager {
 			return Boolean.parseBoolean(mainConfig.getString("logistics_fail_open"));
 		} catch(Exception e) {
 			return true;
+		}
+	}
+
+	public static int getItemLogisticsTransfersPerTick() {
+		try {
+			return Integer.parseInt(mainConfig.getString("item_logistics_transfers_per_tick"));
+		} catch(Exception e) {
+			return 24;
+		}
+	}
+
+	public static int getItemLogisticsQueueCapacity() {
+		try {
+			return Integer.parseInt(mainConfig.getString("item_logistics_max_queue_size"));
+		} catch(Exception e) {
+			return 2048;
+		}
+	}
+
+	public static int getItemLogisticsRetryDelayTicks() {
+		try {
+			return Integer.parseInt(mainConfig.getString("item_logistics_retry_delay_ticks"));
+		} catch(Exception e) {
+			return 10;
+		}
+	}
+
+	public static int getItemLogisticsMaxAttempts() {
+		try {
+			return Integer.parseInt(mainConfig.getString("item_logistics_max_attempts"));
+		} catch(Exception e) {
+			return 6;
 		}
 	}
 

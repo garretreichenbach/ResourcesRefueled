@@ -12,6 +12,7 @@ import videogoose.resourcesreorganized.fuel.StellarFuelManager;
 import videogoose.resourcesreorganized.industry.RecipeManager;
 import videogoose.resourcesreorganized.manager.ConfigManager;
 import videogoose.resourcesreorganized.manager.EventManager;
+import videogoose.resourcesreorganized.manager.ItemLogisticsManager;
 import videogoose.resourcesreorganized.manager.ResourceManager;
 
 public final class ResourcesReorganized extends StarMod {
@@ -29,6 +30,7 @@ public final class ResourcesReorganized extends StarMod {
 	@Override
 	public void onEnable() {
 		ConfigManager.initialize(this);
+		ItemLogisticsManager.initialize();
 		EventManager.initialize(this);
 		registerCommands();
 	}
@@ -37,6 +39,7 @@ public final class ResourcesReorganized extends StarMod {
 	public void onDisable() {
 		StellarFuelManager.saveFuelData();
 		EntityFuelManager.saveCacheData();
+		ItemLogisticsManager.shutdown();
 	}
 
 	@Override

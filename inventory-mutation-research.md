@@ -10,6 +10,8 @@ This document summarizes the research and prioritized targets for intercepting e
 
 Intercept the core Inventory mutation primitives first (`Inventory.inc`, `Inventory.put`, `Inventory.handleReceived`, `Inventory.deserialize`, `Inventory.doSwitchSlotsOrCombine`) then cover network application points (`RemoteInventoryMultMod` / `InventoryMultMod` handling), world spawn/pickup (`RemoteSector.addItem`, `PlayerState` drop/pickup), and direct `inventoryMap.put/remove` spots (deserialization, save/load, server apply). Add temporary logging mixins to validate coverage, then replace logs with logistics dispatch/cancel logic.
 
+Current status: pre-mixin runtime scaffolding is implemented in `src/main/java/videogoose/resourcesreorganized/logistics/item/` and can now receive transfer intents once hooks are switched from probe logging to ingress.
+
 ---
 
 ## Quick checklist (progress-driven)

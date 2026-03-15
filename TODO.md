@@ -14,6 +14,14 @@ fluid-aware systems). The roadmap below has been updated to reflect the current 
 - ✅ World-spawn hook coverage added: `RemoteSector.addItem(Vector3f, short, int, int)`
 - ⬜ Run validation scenarios (pickup, drag/combine, crafting/extractor output, admin give, save/load)
 
+### 0.5. 🚧 Item logistics core (pre-mixin)
+
+- ✅ Core runtime implemented under `src/main/java/videogoose/resourcesreorganized/logistics/item/`
+- ✅ Graph + route planner + transfer queue + deferred retries + diagnostics implemented
+- ✅ Fail-open policy and runtime tuning config keys added
+- ✅ Module lifecycle bootstrapped via `ItemLogisticsManager` in `ResourcesReorganized`
+- ⬜ Replace in-memory executor with live StarMade inventory adapter
+
 ---
 
 ### 1. ✅ Register Heliogen items & blocks
