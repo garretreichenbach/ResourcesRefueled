@@ -6,6 +6,16 @@ fluid-aware systems). The roadmap below has been updated to reflect the current 
 
 ## Checklist
 
+### 0. 🚧 Inventory logistics Phase 0 (probe-only)
+
+- ✅ Config toggles added: `logistics_probe_enabled`, `logistics_intercept_enabled`, `logistics_fail_open`
+- ✅ Initial mixin probes wired: `inventory.InventoryMutationMixin`, `inventory.RemoteSectorMutationMixin`
+- ✅ Core hook coverage added: `Inventory.inc`, `Inventory.put(int, short, int, int)`, `Inventory.handleReceived`, `Inventory.deserialize`, `Inventory.deserializeSlot`, `Inventory.doSwitchSlotsOrCombine`
+- ✅ World-spawn hook coverage added: `RemoteSector.addItem(Vector3f, short, int, int)`
+- ⬜ Run validation scenarios (pickup, drag/combine, crafting/extractor output, admin give, save/load)
+
+---
+
 ### 1. ✅ Register Heliogen items & blocks
 
 Register all new elements via `BlockConfig` in `ElementRegistry`, called from `ResourcesReorganized.onBlockConfigLoad`.

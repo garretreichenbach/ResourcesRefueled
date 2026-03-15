@@ -4,7 +4,10 @@
   "package": "videogoose.resourcesreorganized.mixin",
   "compatibilityLevel": "JAVA_8",
   "target": "@env(DEFAULT)",
-  "mixins": [],
+  "mixins": [
+    "inventory.InventoryMutationMixin",
+    "inventory.RemoteSectorMutationMixin"
+  ],
   "client": [],
   "server": [],
   "injectors": {

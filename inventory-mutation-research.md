@@ -14,7 +14,10 @@ Intercept the core Inventory mutation primitives first (`Inventory.inc`, `Invent
 
 ## Quick checklist (progress-driven)
 
-- [ ] Add lightweight logging mixins for the high-priority methods (Inventory.inc, Inventory.put, Inventory.handleReceived, Inventory.doSwitchSlotsOrCombine, RemoteSector.addItem, Inventory.deserialize).
+- [~] Add lightweight logging mixins for the high-priority methods (Inventory.inc, Inventory.put, Inventory.handleReceived, Inventory.doSwitchSlotsOrCombine, RemoteSector.addItem, Inventory.deserialize).
+  - Implemented in `src/main/java/videogoose/resourcesreorganized/mixin/inventory/InventoryMutationMixin.java`: `Inventory.inc`, `Inventory.put(int, short, int, int)`, `Inventory.handleReceived`, `Inventory.deserialize`, `Inventory.deserializeSlot`, `Inventory.doSwitchSlotsOrCombine`
+  - Implemented in `src/main/java/videogoose/resourcesreorganized/mixin/inventory/RemoteSectorMutationMixin.java`: `RemoteSector.addItem(Vector3f, short, int, int)`
+  - Pending: `Inventory.put(int, MetaObject)`, `Inventory.removeSlot`, `Inventory.removeMetaItem`, `InventorySlot.inc`
 - [ ] Run scenarios (pickup, drag/drop, shop buy, craft, admin give, save/load) and verify logs cover each.
 - [ ] Add mixins for any missed paths uncovered by the logs.
 - [ ] Implement cancel-and-emit logistics event in the authoritative server-side hooks.

@@ -9,6 +9,9 @@ public final class ConfigManager {
 
 	private static final String[] defaultMainConfig = {
 			"debug_mode: false # If true, enables debug logging and features.",
+			"logistics_probe_enabled: false # If true, enables temporary inventory mutation probe logging mixins.",
+			"logistics_intercept_enabled: false # If true, logistics mixins may intercept inventory mutations instead of allowing vanilla behavior.",
+			"logistics_fail_open: true # If true, logistics hooks fail open and allow vanilla inventory behavior on errors.",
 			"fuel_cost_per_strength_unit: 0.5 # Heliogen canisters consumed per unit of extractor strength per tick.",
 			"fueled_extraction_bonus: 0.5 # Fraction of additional output added per consumed canister when extractors are fueled with Heliogen (e.g. 0.5 = +50% resources per canister used).",
 			"condenser_base_output: 4 # Bonus Heliogen Plasma units produced per cycle at proximity 1.0 next to a normal star.",
@@ -46,6 +49,30 @@ public final class ConfigManager {
 			return Boolean.parseBoolean(mainConfig.getString("debug_mode"));
 		} catch(Exception e) {
 			return false;
+		}
+	}
+
+	public static boolean isLogisticsProbeEnabled() {
+		try {
+			return Boolean.parseBoolean(mainConfig.getString("logistics_probe_enabled"));
+		} catch(Exception e) {
+			return false;
+		}
+	}
+
+	public static boolean isLogisticsInterceptEnabled() {
+		try {
+			return Boolean.parseBoolean(mainConfig.getString("logistics_intercept_enabled"));
+		} catch(Exception e) {
+			return false;
+		}
+	}
+
+	public static boolean isLogisticsFailOpen() {
+		try {
+			return Boolean.parseBoolean(mainConfig.getString("logistics_fail_open"));
+		} catch(Exception e) {
+			return true;
 		}
 	}
 

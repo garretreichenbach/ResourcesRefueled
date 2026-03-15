@@ -24,7 +24,9 @@ public enum ElementRegistry {
 	FLUID_CANISTER(new FluidCanister()),
 
 	//Item network blocks
-//	CONVERYOR_BELT(new ConveyorBelt()),
+	CONVEYOR_BELT(new ConveyorBelt()),
+	ITEM_TUBE(new ItemTube()),
+	ITEM_PUMP(new ItemPump()),
 
 	//Pipe network blocks
 	PIPE_VALVE(new PipeValve()),
