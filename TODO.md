@@ -20,6 +20,7 @@ fluid-aware systems). The roadmap below has been updated to reflect the current 
 - ✅ Graph + route planner + transfer queue + deferred retries + diagnostics implemented
 - ✅ Fail-open policy and runtime tuning config keys added
 - ✅ Module lifecycle bootstrapped via `ItemLogisticsManager` in `ResourcesReorganized`
+- ✅ Dual transport semantics implemented: conveyor channels + no vertical + optional ports, tube vertical + pump-gated routing
 - ⬜ Replace in-memory executor with live StarMade inventory adapter
 
 ---

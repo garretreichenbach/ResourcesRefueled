@@ -76,6 +76,10 @@ public final class ItemLogisticsGraph {
 		return Optional.empty();
 	}
 
+	public List<ItemEdge> getOutgoingEdges(String nodeId) {
+		return Collections.unmodifiableList(outgoingEdges.getOrDefault(nodeId, Collections.emptyList()));
+	}
+
 	private static List<String> reconstructPath(Map<String, String> previous, String destinationNodeId) {
 		LinkedList<String> path = new LinkedList<>();
 		String cursor = destinationNodeId;

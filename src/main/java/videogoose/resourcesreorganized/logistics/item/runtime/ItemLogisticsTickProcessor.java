@@ -62,10 +62,10 @@ public final class ItemLogisticsTickProcessor {
 	}
 
 	private ItemTransferReceipt processOne(ItemTransferRequest request, long currentTick) {
-		Optional<ItemRoute> route = routePlanner.planRoute(request.getSourceNodeId(), request.getDestinationNodeId());
+		Optional<ItemRoute> route = routePlanner.planRoute(request);
 		if(!route.isPresent()) {
 			diagnostics.recordNoRoute();
-			return retryOrFail(request, currentTick, "no-route");
+			return retryOrFail(request, currentTick, "no-route family=" + request.getTransportFamily() + " channel=" + request.getChannel());
 		}
 
 		ItemTransferReceipt result = failOpenPolicy.execute(() -> transferExecutor.execute(request, route.get(), currentTick), () -> ItemTransferReceipt.of(request, ItemTransferOutcome.FALLBACK_TO_VANILLA, 0, "fail-open"));

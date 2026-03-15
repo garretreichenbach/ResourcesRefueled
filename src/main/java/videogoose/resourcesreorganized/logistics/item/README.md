@@ -11,6 +11,16 @@ This package contains a mixin-independent item logistics core you can build out 
 - `runtime`: tick processor, retry handling, diagnostics, fail-open behavior
 - `demo`: `ItemLogisticsSelfTest` tiny runnable harness
 
+## Transport families (current behavior)
+
+- `CONVEYOR`: can extract from inventory ports without pumps, supports channel masks for filtering/splitting/combining paths, and rejects vertical edges.
+- `TUBE`: higher-throughput routes, can use vertical edges, and can be configured to require a pump on the resolved route.
+- `NEUTRAL`: inventory/router nodes/edges that can participate in either family.
+
+Inventory ports are optional for conveyor extraction: requests can allow direct-adjacent conveyor endpoints (`allowDirectInventoryAdjacency=true`) and only require ports when advanced port-only behavior is desired (`requireInventoryPort=true`).
+
+Channel masks are bitmasks (`-1` means all channels). Example: mask `0b0010` accepts channel `1` only.
+
 ## Quick try
 
 Compile and run only this subsystem (without compiling the whole mod):
