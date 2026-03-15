@@ -60,7 +60,7 @@ public final class FluidMeta {
 	}
 
 	public static short getFluidId(String fluidName) {
-		if(fluidName.equalsIgnoreCase("empty")) return 0;
+		if("empty".equalsIgnoreCase(fluidName)) return 0;
 		for(ElementInformation info : ElementKeyMap.getInfoArray()) {
 			if(info.getName().equalsIgnoreCase(fluidName)) {
 				return info.getId();

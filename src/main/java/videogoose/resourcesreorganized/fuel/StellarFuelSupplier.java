@@ -135,7 +135,8 @@ public class StellarFuelSupplier implements Serializable {
 			case RR_CRYSTAL_VOID:
 			case RR_EXTRADIMENSIONAL_VOID:
 			case WARP_VOID:
-			case UNKNOWN:        return 0f;
+			case UNKNOWN:
+				return 0.0f;
 			default:             return 0.8f;
 		}
 	}

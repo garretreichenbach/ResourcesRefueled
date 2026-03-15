@@ -90,6 +90,7 @@ Passive Heliogen supply tied to star proximity, no zone maps required.
 - ✅ Serialisation / deserialisation implemented
 - ✅ Tick logic decomposed for readability: `FluidPumpTickProcessor`, `FluidPortTickProcessor`, `FluidTopologyUtils`
 - ✅ Topology and persistence delegation extracted: `FluidTopologyMutationService`, `FluidNetworkCodec`
+- ✅ Model classes extracted to `logistics/fluid/model` with compatibility wrappers in `FluidSystemModule`
 
 ---
 
