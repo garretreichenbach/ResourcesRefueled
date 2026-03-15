@@ -510,40 +510,26 @@ public class FluidSystemModule extends SystemModule {
 	}
 
 	/** One placed {@code FLUID_PORT} block — bridges inventory and the fluid network each tick. */
-	public static final class FluidPortSegment {
-		public final long blockIndex;
-		/** Current fluid units held in this port's internal buffer. */
-		public double bufferLevel;
-		/** Fluid element ID currently in the buffer. 0 = empty. */
-		public short bufferFluidId;
+	public static final class FluidPortSegment extends videogoose.resourcesreorganized.logistics.fluid.model.FluidPortSegment {
 
 		public FluidPortSegment(long blockIndex) {
-			this.blockIndex = blockIndex;
+			super(blockIndex);
 		}
 	}
 
 	/** One placed {@code FLUID_TANK} block — contributes capacity to its network. */
-	public static final class FluidTankSegment {
-		public final long blockIndex;
-		public final short blockType;
+	public static final class FluidTankSegment extends videogoose.resourcesreorganized.logistics.fluid.model.FluidTankSegment {
 
 		public FluidTankSegment(long blockIndex, short blockType) {
-			this.blockIndex = blockIndex;
-			this.blockType = blockType;
+			super(blockIndex, blockType);
 		}
 	}
 
 	/** One placed pipe-network block (pipe, pump, valve, filter). */
-	public static final class FluidPipeSegment {
-		public final long blockIndex;
-		public final short blockType;
-		/** Flow rate in L/s for pumps. Positive = outflow from source, Negative = inflow to target, 0 = no flow */
-		public float flowRate;
+	public static final class FluidPipeSegment extends videogoose.resourcesreorganized.logistics.fluid.model.FluidPipeSegment {
 
 		public FluidPipeSegment(long blockIndex, short blockType) {
-			this.blockIndex = blockIndex;
-			this.blockType = blockType;
-			flowRate = 0;
+			super(blockIndex, blockType);
 		}
 	}
 
@@ -554,20 +540,7 @@ public class FluidSystemModule extends SystemModule {
 	 * Capacity is derived structurally: {@code tankCount × capacityPerBlock}.
 	 * Fluid level is never allowed to exceed capacity.
 	 */
-	public static final class FluidNetwork {
-		/** All block indices (tanks + pipes) that belong to this network. */
-		public final Set<Long> memberIndices = new HashSet<>();
-		/** Current stored fluid units. Always ≤ {@link #tankCapacity}. */
-		public double fluidLevel;
-		/** Cached capacity — recalculated by topology mutation/codec services. */
-		public double tankCapacity;
-		/** The fluid element ID this network contains (matches the fluid_id metadata on canisters). 0 = empty/no fluid. */
-		public short fluidId;
-
-		/** True when this network has no blocks at all. */
-		public boolean isEmpty() {
-			return memberIndices.isEmpty();
-		}
+	public static final class FluidNetwork extends videogoose.resourcesreorganized.logistics.fluid.model.FluidNetwork {
 
 		/**
 		 * Returns {@code true} if the fluid currently stored in this network is volatile
