@@ -23,7 +23,7 @@ public class PipePump extends Block {
 		blockInfo.placable = true;
 		blockInfo.canActivate = true;
 		blockInfo.shoppable = true;
-		blockInfo.inventoryGroup = "FluidPipes";
+		blockInfo.inventoryGroup = "FluidTransport";
 		blockInfo.blockStyle = BlockStyle.SPRITE;
 		blockInfo.blended = true;
 		blockInfo.drawOnlyInBuildMode = true;
