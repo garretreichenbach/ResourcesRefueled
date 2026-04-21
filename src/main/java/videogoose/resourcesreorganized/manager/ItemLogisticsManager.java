@@ -1,7 +1,7 @@
 package videogoose.resourcesreorganized.manager;
 
-import videogoose.resourcesreorganized.logistics.item.runtime.InMemoryTransferExecutor;
 import videogoose.resourcesreorganized.logistics.item.runtime.ItemLogisticsSystemModule;
+import videogoose.resourcesreorganized.logistics.item.runtime.LiveTransferExecutor;
 
 public final class ItemLogisticsManager {
 
@@ -14,7 +14,7 @@ public final class ItemLogisticsManager {
 		if(systemModule != null) {
 			return;
 		}
-		systemModule = new ItemLogisticsSystemModule(ConfigManager.getItemLogisticsQueueCapacity(), ConfigManager.getItemLogisticsTransfersPerTick(), ConfigManager.getItemLogisticsRetryDelayTicks(), ConfigManager.getItemLogisticsMaxAttempts(), ConfigManager::isLogisticsFailOpen, new InMemoryTransferExecutor());
+		systemModule = new ItemLogisticsSystemModule(ConfigManager.getItemLogisticsQueueCapacity(), ConfigManager.getItemLogisticsTransfersPerTick(), ConfigManager.getItemLogisticsRetryDelayTicks(), ConfigManager.getItemLogisticsMaxAttempts(), ConfigManager::isLogisticsFailOpen, new LiveTransferExecutor());
 	}
 
 	public static ItemLogisticsSystemModule getSystemModule() {

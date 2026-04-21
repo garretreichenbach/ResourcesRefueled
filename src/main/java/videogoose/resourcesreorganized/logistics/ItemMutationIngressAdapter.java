@@ -7,8 +7,10 @@ import videogoose.resourcesreorganized.logistics.item.graph.ItemNodeType;
 import videogoose.resourcesreorganized.logistics.item.graph.ItemEdge;
 import videogoose.resourcesreorganized.logistics.item.graph.TransportFamily;
 import videogoose.resourcesreorganized.logistics.item.model.ItemTransferRequest;
+import videogoose.resourcesreorganized.logistics.item.runtime.InventoryReferenceRegistry;
 import videogoose.resourcesreorganized.logistics.item.runtime.ItemEndpointPolicyRegistry;
 import videogoose.resourcesreorganized.logistics.item.runtime.ItemLogisticsSystemModule;
+import videogoose.resourcesreorganized.logistics.item.runtime.LiveTransferExecutor;
 import videogoose.resourcesreorganized.manager.ConfigManager;
 import videogoose.resourcesreorganized.manager.ItemLogisticsManager;
 
@@ -29,12 +31,16 @@ public final class ItemMutationIngressAdapter {
 		if(!ConfigManager.isLogisticsInterceptEnabled()) {
 			return false;
 		}
+		if(LiveTransferExecutor.isExecuting()) {
+			return false;
+		}
 		if(inventory == null || type <= 0) {
 			return false;
 		}
 
 		int normalizedCount = Math.max(1, Math.abs(count));
 		String inventoryNodeId = inventoryNodeId(inventory);
+		InventoryReferenceRegistry.register(inventoryNodeId, inventory);
 		String adjacentNodeId = adjacentNodeId(inventory);
 		long tick = System.currentTimeMillis() / 50L;
 		boolean inbound = !"inc".equals(operation) || count >= 0;
