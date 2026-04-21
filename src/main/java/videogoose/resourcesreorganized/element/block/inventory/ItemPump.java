@@ -19,10 +19,11 @@ public class ItemPump extends Block {
 		blockInfo.mass = Blocks.PIPE.getInfo().mass * 1.3f;
 		blockInfo.price = Blocks.PIPE.getInfo().price * 2;
 		blockInfo.volume = Blocks.PIPE.getInfo().volume * 1.3f;
-		blockInfo.description = "Directional driver for tube-based logistics.\n"
-				+ "Pulls and pushes item flow through Item Tubes at higher throughput.\n"
-				+ "Used for tube extraction/insertion paths and vertical transfer control.\n"
-				+ "Best suited for compact, high-speed, point-to-point item lines.";
+		blockInfo.description = """
+				Directional driver for tube-based logistics.
+				Pulls and pushes item flow through Item Tubes at higher throughput.
+				Used for tube extraction/insertion paths and vertical transfer control.
+				Best suited for compact, high-speed, point-to-point item lines.""";
 		blockInfo.placable = true;
 		blockInfo.canActivate = true;
 		blockInfo.shoppable = true;

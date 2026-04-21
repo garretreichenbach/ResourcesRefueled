@@ -19,10 +19,11 @@ public class ConveyorBelt extends Block {
 		blockInfo.mass = Blocks.PIPE.getInfo().mass * 1.3f;
 		blockInfo.price = Blocks.PIPE.getInfo().price * 2;
 		blockInfo.volume = Blocks.PIPE.getInfo().volume * 1.3f;
-		blockInfo.description = "Basic item transport line.\n"
-				+ "Extracts from adjacent inventories without a pump.\n"
-				+ "Supports horizontal and diagonal routing only (no vertical transfer).\n"
-				+ "Use inventory ports for advanced filtering, splitting, and combining behavior.";
+		blockInfo.description = """
+				Basic item transport line.
+				Extracts from adjacent inventories without a pump.
+				Supports horizontal and diagonal routing only (no vertical transfer).
+				Use inventory ports for advanced filtering, splitting, and combining behavior.""";
 		blockInfo.placable = true;
 		blockInfo.canActivate = true;
 		blockInfo.shoppable = true;
