@@ -12,9 +12,8 @@ import javax.vecmath.Vector3f;
 @Mixin(value = RemoteSector.class, remap = false)
 public abstract class RemoteSectorMutationMixin {
 
-	@Inject(method = "addItem(Ljavax/vecmath/Vector3f;SII)V", at = @At("HEAD"), remap = false)
+	@Inject(method = "addItem(Ljavax/vecmath/Vector3f;SII)V", at = @At("HEAD"))
 	private void rr$probeAddItem(Vector3f pos, short type, int metaId, int count, CallbackInfo ci) {
 		InventoryMutationProbe.logRemoteAddItem(this, pos, type, metaId, count);
 	}
 }
-

@@ -34,6 +34,8 @@ public class ReflectionUtils {
 
 	/**
 	 * Injects a new enum value into the specified enum class.
+	 * </br>
+	 * FIXME: This will not work in Java 21+ due to enhanced enum protections, and may require JVM arguments to disable illegal access checks. Use with caution.
 	 * @param enumClass The enum class to modify
 	 * @param name The name of the new enum constant
 	 * @param ordinal The ordinal value for the new enum constant

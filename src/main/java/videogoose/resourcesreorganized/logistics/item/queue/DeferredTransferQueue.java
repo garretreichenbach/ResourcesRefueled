@@ -8,17 +8,9 @@ import java.util.PriorityQueue;
 
 public final class DeferredTransferQueue {
 
-	private static final class DeferredItem {
-		private final long readyAtTick;
-		private final ItemTransferRequest request;
+	private record DeferredItem(long readyAtTick, ItemTransferRequest request) { }
 
-		private DeferredItem(long readyAtTick, ItemTransferRequest request) {
-			this.readyAtTick = readyAtTick;
-			this.request = request;
-		}
-	}
-
-	private final PriorityQueue<DeferredItem> queue = new PriorityQueue<DeferredItem>(Comparator.comparingLong(item -> item.readyAtTick));
+	private final PriorityQueue<DeferredItem> queue = new PriorityQueue<>(Comparator.comparingLong(item -> item.readyAtTick));
 
 	public void defer(long readyAtTick, ItemTransferRequest request) {
 		queue.offer(new DeferredItem(readyAtTick, request));

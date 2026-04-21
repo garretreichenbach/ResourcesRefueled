@@ -16,7 +16,7 @@ public final class FluidTopologyUtils {
 	public static Set<Long> faceAdjacentIndices(long index) {
 		Vector3i pos = new Vector3i();
 		ElementCollection.getPosFromIndex(index, pos);
-		Set<Long> result = new HashSet<Long>(6);
+		Set<Long> result = new HashSet<>(6);
 		result.add(ElementCollection.getIndex(pos.x + 1, pos.y, pos.z));
 		result.add(ElementCollection.getIndex(pos.x - 1, pos.y, pos.z));
 		result.add(ElementCollection.getIndex(pos.x, pos.y + 1, pos.z));

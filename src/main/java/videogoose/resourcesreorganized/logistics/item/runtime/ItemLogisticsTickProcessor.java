@@ -43,7 +43,7 @@ public final class ItemLogisticsTickProcessor {
 		List<ItemTransferReceipt> receipts = new ArrayList<ItemTransferReceipt>();
 		for(int i = 0; i < transfersPerTick; i++) {
 			Optional<ItemTransferRequest> requestOpt = queue.poll();
-			if(!requestOpt.isPresent()) {
+			if(requestOpt.isEmpty()) {
 				break;
 			}
 			receipts.add(processOne(requestOpt.get(), currentTick));
@@ -54,7 +54,7 @@ public final class ItemLogisticsTickProcessor {
 	private void promoteDeferred(long currentTick) {
 		while(true) {
 			Optional<ItemTransferRequest> deferred = deferredQueue.pollReady(currentTick);
-			if(!deferred.isPresent()) {
+			if(deferred.isEmpty()) {
 				break;
 			}
 			queue.offer(deferred.get());
@@ -63,7 +63,7 @@ public final class ItemLogisticsTickProcessor {
 
 	private ItemTransferReceipt processOne(ItemTransferRequest request, long currentTick) {
 		Optional<ItemRoute> route = routePlanner.planRoute(request);
-		if(!route.isPresent()) {
+		if(route.isEmpty()) {
 			diagnostics.recordNoRoute();
 			return retryOrFail(request, currentTick, "no-route family=" + request.getTransportFamily() + " channel=" + request.getChannel());
 		}

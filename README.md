@@ -9,8 +9,8 @@ demonstration of the system.
 
 ## Requirements
 
-- [Resources ReSourced (RRS)](https://starmadedock.net/content/resources-resourced.8292/) v0.9.7+
-- StarMade 0.205.1+
+- [Resources ReSourced (RRS)](https://starmadedock.net/content/resources-resourced.8292/) v0.9.8+
+- StarMade 0.303.0+
 
 ---
 

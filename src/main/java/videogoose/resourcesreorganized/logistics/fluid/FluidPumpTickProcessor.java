@@ -21,8 +21,8 @@ public final class FluidPumpTickProcessor {
 			}
 			long pumpIndex = seg.blockIndex;
 
-			Set<FluidSystemModule.FluidNetwork> adjacentNets = new LinkedHashSet<FluidSystemModule.FluidNetwork>();
-			List<FluidSystemModule.FluidPortSegment> adjacentPorts = new ArrayList<FluidSystemModule.FluidPortSegment>();
+			Set<FluidSystemModule.FluidNetwork> adjacentNets = new LinkedHashSet<>();
+			List<FluidSystemModule.FluidPortSegment> adjacentPorts = new ArrayList<>();
 			for(long nb : FluidTopologyUtils.faceAdjacentIndices(pumpIndex)) {
 				FluidSystemModule.FluidPortSegment portSeg = portSegments.get(nb);
 				if(portSeg != null) {

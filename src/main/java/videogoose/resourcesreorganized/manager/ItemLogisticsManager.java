@@ -14,13 +14,7 @@ public final class ItemLogisticsManager {
 		if(systemModule != null) {
 			return;
 		}
-		systemModule = new ItemLogisticsSystemModule(
-				ConfigManager.getItemLogisticsQueueCapacity(),
-				ConfigManager.getItemLogisticsTransfersPerTick(),
-				ConfigManager.getItemLogisticsRetryDelayTicks(),
-				ConfigManager.getItemLogisticsMaxAttempts(),
-				ConfigManager::isLogisticsFailOpen,
-				new InMemoryTransferExecutor());
+		systemModule = new ItemLogisticsSystemModule(ConfigManager.getItemLogisticsQueueCapacity(), ConfigManager.getItemLogisticsTransfersPerTick(), ConfigManager.getItemLogisticsRetryDelayTicks(), ConfigManager.getItemLogisticsMaxAttempts(), ConfigManager::isLogisticsFailOpen, new InMemoryTransferExecutor());
 	}
 
 	public static ItemLogisticsSystemModule getSystemModule() {

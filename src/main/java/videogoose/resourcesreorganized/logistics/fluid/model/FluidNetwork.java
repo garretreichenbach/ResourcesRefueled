@@ -5,7 +5,7 @@ import java.util.Set;
 
 public class FluidNetwork {
 
-	public final Set<Long> memberIndices = new HashSet<Long>();
+	public final Set<Long> memberIndices = new HashSet<>();
 	public double fluidLevel;
 	public double tankCapacity;
 	public short fluidId;

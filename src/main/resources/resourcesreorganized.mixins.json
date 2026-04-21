@@ -1,16 +1,16 @@
 {
-  "required": true,
-  "minVersion": "0.8.7",
-  "package": "videogoose.resourcesreorganized.mixin",
-  "compatibilityLevel": "JAVA_8",
-  "target": "@env(DEFAULT)",
-  "mixins": [
-    "inventory.InventoryMutationMixin",
-    "inventory.RemoteSectorMutationMixin"
-  ],
-  "client": [],
-  "server": [],
-  "injectors": {
-    "defaultRequire": 1
-  }
+	"required": true,
+	"minVersion": "0.8.7",
+	"package": "videogoose.resourcesreorganized.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"target": "@env(DEFAULT)",
+	"mixins": [
+		"inventory.InventoryMutationMixin",
+		"inventory.RemoteSectorMutationMixin"
+	],
+	"client": [],
+	"server": [],
+	"injectors": {
+		"defaultRequire": 1
+	}
 }

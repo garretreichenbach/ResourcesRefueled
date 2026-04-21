@@ -183,12 +183,12 @@ public final class FluidTopologyMutationService {
 	}
 
 	private static List<FluidSystemModule.FluidNetwork> floodPartition(Set<Long> members, Map<Long, FluidSystemModule.FluidPipeSegment> pipeSegments) {
-		Set<Long> unvisited = new HashSet<Long>(members);
-		List<FluidSystemModule.FluidNetwork> result = new ArrayList<FluidSystemModule.FluidNetwork>();
+		Set<Long> unvisited = new HashSet<>(members);
+		List<FluidSystemModule.FluidNetwork> result = new ArrayList<>();
 
 		while(!unvisited.isEmpty()) {
 			FluidSystemModule.FluidNetwork component = new FluidSystemModule.FluidNetwork();
-			Queue<Long> queue = new ArrayDeque<Long>();
+			Queue<Long> queue = new ArrayDeque<>();
 			long seed = unvisited.iterator().next();
 			FluidSystemModule.FluidPipeSegment seedSeg = pipeSegments.get(seed);
 			if(seedSeg != null && isNetworkDevice(seedSeg.blockType)) {

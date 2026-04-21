@@ -7,7 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public final class ItemEndpointPolicyRegistry {
 
-	private static final Map<String, ItemEndpointPolicy> policiesByNodeId = new ConcurrentHashMap<String, ItemEndpointPolicy>();
+	private static final Map<String, ItemEndpointPolicy> policiesByNodeId = new ConcurrentHashMap<>();
 
 	private ItemEndpointPolicyRegistry() {
 	}

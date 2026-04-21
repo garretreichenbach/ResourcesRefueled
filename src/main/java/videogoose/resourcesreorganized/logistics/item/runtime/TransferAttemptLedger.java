@@ -8,7 +8,7 @@ import java.util.UUID;
 
 public final class TransferAttemptLedger {
 
-	private final Map<UUID, Integer> attemptsByRequest = new HashMap<UUID, Integer>();
+	private final Map<UUID, Integer> attemptsByRequest = new HashMap<>();
 
 	public int increment(ItemTransferRequest request) {
 		UUID key = request.getRequestId();

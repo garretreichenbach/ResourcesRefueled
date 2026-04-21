@@ -9,6 +9,12 @@ group = project.property('mod_org_id')
 version = project.property('mod_version')
 mainClassName = group + modName
 
+java {
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
+}
+
+
 repositories {
 	mavenCentral()
 	maven {
@@ -19,7 +25,7 @@ repositories {
 dependencies {
 	compileOnly(files(starmadeDirectory + "StarMade.jar"))
 	compileOnly(fileTree(dir: (starmadeDirectory + "lib"), include: "*.jar"))
-	compileOnly(fileTree(dir: 'lib', include: '*.jar'))
+	implementation(files(starmadeDirectory + "/mods/Resources ReSourcedv" + project.property("rrs_version") + ".jar"))
 
 	compileOnly 'org.spongepowered:mixin:0.8.7'
 	annotationProcessor 'org.spongepowered:mixin:0.8.7:processor'

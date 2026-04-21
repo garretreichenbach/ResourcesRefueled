@@ -13,51 +13,28 @@ import java.util.Map;
  */
 public final class InMemoryTransferExecutor implements ItemTransferExecutor {
 
-	private static final class ItemKey {
-		private final short type;
-		private final int meta;
-
-		private ItemKey(short type, int meta) {
-			this.type = type;
-			this.meta = meta;
-		}
-
-		@Override
-		public boolean equals(Object obj) {
-			if(this == obj) return true;
-			if(!(obj instanceof ItemKey)) return false;
-			ItemKey other = (ItemKey) obj;
-			return type == other.type && meta == other.meta;
-		}
-
-		@Override
-		public int hashCode() {
-			return 31 * type + meta;
-		}
-	}
-
-	private final Map<String, Map<ItemKey, Integer>> inventoryByNode = new HashMap<String, Map<ItemKey, Integer>>();
-	private final Map<String, Integer> capacityByNode = new HashMap<String, Integer>();
+	private final Map<String, Map<ItemKey, Integer>> inventoryByNode = new HashMap<>();
+	private final Map<String, Integer> capacityByNode = new HashMap<>();
 
 	public void setCapacity(String nodeId, int capacity) {
 		capacityByNode.put(nodeId, Math.max(1, capacity));
 	}
 
 	public void seed(String nodeId, short type, int meta, int count) {
-		Map<ItemKey, Integer> inventory = inventoryByNode.computeIfAbsent(nodeId, ignored -> new HashMap<ItemKey, Integer>());
+		Map<ItemKey, Integer> inventory = inventoryByNode.computeIfAbsent(nodeId, ignored -> new HashMap<>());
 		ItemKey key = new ItemKey(type, meta);
 		inventory.put(key, Math.max(0, inventory.getOrDefault(key, 0) + count));
 	}
 
 	public int getCount(String nodeId, short type, int meta) {
-		Map<ItemKey, Integer> inventory = inventoryByNode.getOrDefault(nodeId, new HashMap<ItemKey, Integer>());
+		Map<ItemKey, Integer> inventory = inventoryByNode.getOrDefault(nodeId, new HashMap<>());
 		return inventory.getOrDefault(new ItemKey(type, meta), 0);
 	}
 
 	@Override
 	public ItemTransferReceipt execute(ItemTransferRequest request, ItemRoute route, long currentTick) {
-		Map<ItemKey, Integer> source = inventoryByNode.computeIfAbsent(request.getSourceNodeId(), ignored -> new HashMap<ItemKey, Integer>());
-		Map<ItemKey, Integer> destination = inventoryByNode.computeIfAbsent(request.getDestinationNodeId(), ignored -> new HashMap<ItemKey, Integer>());
+		Map<ItemKey, Integer> source = inventoryByNode.computeIfAbsent(request.getSourceNodeId(), ignored -> new HashMap<>());
+		Map<ItemKey, Integer> destination = inventoryByNode.computeIfAbsent(request.getDestinationNodeId(), ignored -> new HashMap<>());
 
 		ItemKey key = new ItemKey(request.getItemType(), request.getMetaId());
 		int available = source.getOrDefault(key, 0);
@@ -68,7 +45,7 @@ public final class InMemoryTransferExecutor implements ItemTransferExecutor {
 		int destinationCapacity = capacityByNode.getOrDefault(request.getDestinationNodeId(), Integer.MAX_VALUE);
 		int destinationLoad = destination.values().stream().mapToInt(Integer::intValue).sum();
 		int destinationFree = Math.max(0, destinationCapacity - destinationLoad);
-		int moved = Math.min(Math.min(available, destinationFree), Math.min(route.getMaxItemsPerTick(), request.getCount()));
+		int moved = Math.min(Math.min(available, destinationFree), Math.min(route.maxItemsPerTick(), request.getCount()));
 		if(moved <= 0) {
 			return ItemTransferReceipt.of(request, ItemTransferOutcome.FAILED, 0, "destination-full");
 		}
@@ -78,6 +55,21 @@ public final class InMemoryTransferExecutor implements ItemTransferExecutor {
 
 		ItemTransferOutcome outcome = (moved == request.getCount()) ? ItemTransferOutcome.SUCCESS : ItemTransferOutcome.PARTIAL;
 		return ItemTransferReceipt.of(request, outcome, moved, "ok");
+	}
+
+	private record ItemKey(short type, int meta) {
+
+		@Override
+		public boolean equals(Object obj) {
+			if(this == obj) return true;
+			if(!(obj instanceof ItemKey(short type1, int meta1))) return false;
+			return type == type1 && meta == meta1;
+		}
+
+		@Override
+		public int hashCode() {
+			return 31 * type + meta;
+		}
 	}
 }
 

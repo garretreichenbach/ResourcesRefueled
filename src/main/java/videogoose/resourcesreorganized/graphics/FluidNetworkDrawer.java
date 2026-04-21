@@ -433,22 +433,15 @@ public class FluidNetworkDrawer extends ModWorldDrawer {
 		int dir = orientation & 0x07; // Lower 3 bits contain direction
 
 		// Adjusted mapping to match pump model's actual orientation
-		switch(dir) {
-			case 0:
-				return new Vector3i(0, 0, 1); // Front (Z-)
-			case 1:
-				return new Vector3i(0, 0, -1);  // Back (Z+)
-			case 2:
-				return new Vector3i(0, 1, 0);  // Top (Y+)
-			case 3:
-				return new Vector3i(0, -1, 0); // Bottom (Y-)
-			case 4:
-				return new Vector3i(-1, 0, 0); // Right (X-)
-			case 5:
-				return new Vector3i(1, 0, 0);  // Left (X+)
-			default:
-				return new Vector3i(0, 0, 1); // Default forward
-		}
+		return switch(dir) {
+			case 0 -> new Vector3i(0, 0, 1); // Front (Z-)
+			case 1 -> new Vector3i(0, 0, -1);  // Back (Z+)
+			case 2 -> new Vector3i(0, 1, 0);  // Top (Y+)
+			case 3 -> new Vector3i(0, -1, 0); // Bottom (Y-)
+			case 4 -> new Vector3i(-1, 0, 0); // Right (X-)
+			case 5 -> new Vector3i(1, 0, 0);  // Left (X+)
+			default -> new Vector3i(0, 0, 1); // Default forward
+		};
 	}
 
 	/**
@@ -579,13 +572,11 @@ public class FluidNetworkDrawer extends ModWorldDrawer {
 	 * @return The module, or null if not available
 	 */
 	public FluidSystemModule getCurrentFluidModule() {
-		if(!(GameClient.getCurrentControl() instanceof ManagedUsableSegmentController)) {
+		if(!(GameClient.getCurrentControl() instanceof ManagedUsableSegmentController<?> controller)) {
 			return null;
 		}
 
-		ManagedUsableSegmentController<?> controller = (ManagedUsableSegmentController<?>) GameClient.getCurrentControl();
 		ManagerContainer<?> container = controller.getManagerContainer();
-
 		return (FluidSystemModule) container.getModMCModule(ElementRegistry.FLUID_TANK.getId());
 	}
 
@@ -629,13 +620,11 @@ public class FluidNetworkDrawer extends ModWorldDrawer {
 	 * @return The index of an adjacent fluid block, or -1 if none found
 	 */
 	public long findAdjacentFluidBlock(long centerIndex) {
-		if(!(GameClient.getCurrentControl() instanceof ManagedUsableSegmentController)) {
+		if(!(GameClient.getCurrentControl() instanceof ManagedUsableSegmentController<?> controller)) {
 			return -1;
 		}
 
-		ManagedUsableSegmentController<?> controller = (ManagedUsableSegmentController<?>) GameClient.getCurrentControl();
 		SegmentBufferManager buffer = (SegmentBufferManager) controller.getSegmentBuffer();
-
 		Vector3i pos = new Vector3i();
 		ElementCollection.getPosFromIndex(centerIndex, pos);
 

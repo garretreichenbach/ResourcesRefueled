@@ -8,7 +8,7 @@ import java.util.Optional;
 public final class ItemTransferQueue {
 
 	private final int capacity;
-	private final ArrayDeque<ItemTransferRequest> queue = new ArrayDeque<ItemTransferRequest>();
+	private final ArrayDeque<ItemTransferRequest> queue = new ArrayDeque<>();
 
 	public ItemTransferQueue(int capacity) {
 		this.capacity = Math.max(1, capacity);

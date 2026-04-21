@@ -1,5 +1,6 @@
 package videogoose.resourcesreorganized.logistics;
 
+import org.json.JSONObject;
 import org.schema.game.common.data.player.inventory.Inventory;
 import org.schema.game.common.data.player.inventory.InventoryMultMod;
 import videogoose.resourcesreorganized.ResourcesReorganized;
@@ -42,9 +43,9 @@ public final class InventoryMutationProbe {
 		log("deserializeSlot", inventory, "");
 	}
 
-	public static void logSwitchOrCombine(Inventory inventory, int slot, int otherSlot, int subSlotFromOther, Inventory otherInventory, int count) {
+	public static void logSwitchOrCombine(Inventory inventory, int slot, int otherSlot, int subSlotFromOther, Inventory otherInventory, int count, JSONObject customData) {
 		String other = (otherInventory == null) ? "null" : otherInventory.getClass().getSimpleName() + "@" + Integer.toHexString(System.identityHashCode(otherInventory));
-		log("doSwitchSlotsOrCombine", inventory, "slot=" + slot + " otherSlot=" + otherSlot + " subSlot=" + subSlotFromOther + " count=" + count + " other=" + other);
+		log("doSwitchSlotsOrCombine", inventory, "slot=" + slot + " otherSlot=" + otherSlot + " subSlot=" + subSlotFromOther + " count=" + count + " other=" + other + " customData=" + customData);
 	}
 
 	public static void logRemoteAddItem(Object remoteSector, Object pos, short type, int metaId, int count) {
