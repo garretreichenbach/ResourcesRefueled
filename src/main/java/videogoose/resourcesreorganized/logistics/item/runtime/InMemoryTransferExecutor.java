@@ -33,19 +33,19 @@ public final class InMemoryTransferExecutor implements ItemTransferExecutor {
 
 	@Override
 	public ItemTransferReceipt execute(ItemTransferRequest request, ItemRoute route, long currentTick) {
-		Map<ItemKey, Integer> source = inventoryByNode.computeIfAbsent(request.getSourceNodeId(), ignored -> new HashMap<>());
-		Map<ItemKey, Integer> destination = inventoryByNode.computeIfAbsent(request.getDestinationNodeId(), ignored -> new HashMap<>());
+		Map<ItemKey, Integer> source = inventoryByNode.computeIfAbsent(request.sourceNodeId(), ignored -> new HashMap<>());
+		Map<ItemKey, Integer> destination = inventoryByNode.computeIfAbsent(request.destinationNodeId(), ignored -> new HashMap<>());
 
-		ItemKey key = new ItemKey(request.getItemType(), request.getMetaId());
+		ItemKey key = new ItemKey(request.itemType(), request.metaId());
 		int available = source.getOrDefault(key, 0);
 		if(available <= 0) {
 			return ItemTransferReceipt.of(request, ItemTransferOutcome.FAILED, 0, "source-empty");
 		}
 
-		int destinationCapacity = capacityByNode.getOrDefault(request.getDestinationNodeId(), Integer.MAX_VALUE);
+		int destinationCapacity = capacityByNode.getOrDefault(request.destinationNodeId(), Integer.MAX_VALUE);
 		int destinationLoad = destination.values().stream().mapToInt(Integer::intValue).sum();
 		int destinationFree = Math.max(0, destinationCapacity - destinationLoad);
-		int moved = Math.min(Math.min(available, destinationFree), Math.min(route.maxItemsPerTick(), request.getCount()));
+		int moved = Math.min(Math.min(available, destinationFree), Math.min(route.maxItemsPerTick(), request.count()));
 		if(moved <= 0) {
 			return ItemTransferReceipt.of(request, ItemTransferOutcome.FAILED, 0, "destination-full");
 		}
@@ -53,7 +53,7 @@ public final class InMemoryTransferExecutor implements ItemTransferExecutor {
 		source.put(key, available - moved);
 		destination.put(key, destination.getOrDefault(key, 0) + moved);
 
-		ItemTransferOutcome outcome = (moved == request.getCount()) ? ItemTransferOutcome.SUCCESS : ItemTransferOutcome.PARTIAL;
+		ItemTransferOutcome outcome = (moved == request.count()) ? ItemTransferOutcome.SUCCESS : ItemTransferOutcome.PARTIAL;
 		return ItemTransferReceipt.of(request, outcome, moved, "ok");
 	}
 

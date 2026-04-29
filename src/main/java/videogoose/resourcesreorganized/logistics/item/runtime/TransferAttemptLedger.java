@@ -11,14 +11,14 @@ public final class TransferAttemptLedger {
 	private final Map<UUID, Integer> attemptsByRequest = new HashMap<>();
 
 	public int increment(ItemTransferRequest request) {
-		UUID key = request.getRequestId();
+		UUID key = request.requestId();
 		int next = attemptsByRequest.getOrDefault(key, 0) + 1;
 		attemptsByRequest.put(key, next);
 		return next;
 	}
 
 	public void clear(ItemTransferRequest request) {
-		attemptsByRequest.remove(request.getRequestId());
+		attemptsByRequest.remove(request.requestId());
 	}
 }
 

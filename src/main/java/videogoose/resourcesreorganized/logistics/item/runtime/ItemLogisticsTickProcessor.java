@@ -65,33 +65,33 @@ public final class ItemLogisticsTickProcessor {
 		Optional<ItemRoute> route = routePlanner.planRoute(request);
 		if(route.isEmpty()) {
 			diagnostics.recordNoRoute();
-			return retryOrFail(request, currentTick, "no-route family=" + request.getTransportFamily() + " channel=" + request.getChannel());
+			return retryOrFail(request, currentTick, "no-route family=" + request.transportFamily() + " channel=" + request.channel());
 		}
 
 		ItemTransferReceipt result = failOpenPolicy.execute(() -> transferExecutor.execute(request, route.get(), currentTick), () -> ItemTransferReceipt.of(request, ItemTransferOutcome.FALLBACK_TO_VANILLA, 0, "fail-open"));
 
-		if(result.getOutcome() == ItemTransferOutcome.SUCCESS) {
+		if(result.outcome() == ItemTransferOutcome.SUCCESS) {
 			attemptLedger.clear(request);
 			diagnostics.recordCompleted();
 			return result;
 		}
 
-		if(result.getOutcome() == ItemTransferOutcome.PARTIAL) {
+		if(result.outcome() == ItemTransferOutcome.PARTIAL) {
 			diagnostics.recordPartial();
-			int remaining = Math.max(0, request.getCount() - result.getMovedCount());
+			int remaining = Math.max(0, request.count() - result.movedCount());
 			if(remaining > 0) {
 				queue.offer(request.withCount(remaining));
 			}
 			return result;
 		}
 
-		if(result.getOutcome() == ItemTransferOutcome.FALLBACK_TO_VANILLA) {
+		if(result.outcome() == ItemTransferOutcome.FALLBACK_TO_VANILLA) {
 			attemptLedger.clear(request);
 			return result;
 		}
 
 		diagnostics.recordFailed();
-		return retryOrFail(request, currentTick, result.getMessage());
+		return retryOrFail(request, currentTick, result.message());
 	}
 
 	private ItemTransferReceipt retryOrFail(ItemTransferRequest request, long currentTick, String reason) {

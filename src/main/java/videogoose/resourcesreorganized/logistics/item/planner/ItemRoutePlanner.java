@@ -36,7 +36,7 @@ public final class ItemRoutePlanner {
 		if(throughput == Integer.MAX_VALUE) {
 			throughput = 1;
 		}
-		return Optional.of(new ItemRoute(path, throughput, request.getTransportFamily(), request.getChannel(), usesPump));
+		return Optional.of(new ItemRoute(path, throughput, request.transportFamily(), request.channel(), usesPump));
 	}
 
 	public Optional<ItemRoute> planRoute(String sourceNodeId, String destinationNodeId) {
@@ -45,8 +45,8 @@ public final class ItemRoutePlanner {
 	}
 
 	private Optional<List<String>> constrainedPath(ItemTransferRequest request) {
-		String sourceNodeId = request.getSourceNodeId();
-		String destinationNodeId = request.getDestinationNodeId();
+		String sourceNodeId = request.sourceNodeId();
+		String destinationNodeId = request.destinationNodeId();
 		if(!graph.getNode(sourceNodeId).isPresent() || !graph.getNode(destinationNodeId).isPresent()) {
 			return Optional.empty();
 		}
@@ -106,8 +106,8 @@ public final class ItemRoutePlanner {
 	}
 
 	private boolean isPathValidForRequest(List<String> path, ItemTransferRequest request) {
-		TransportFamily family = request.getTransportFamily();
-		if(family == TransportFamily.TUBE && request.isRequirePump()) {
+		TransportFamily family = request.transportFamily();
+		if(family == TransportFamily.TUBE && request.requirePump()) {
 			for(String nodeId : path) {
 				ItemNode node = graph.getNode(nodeId).orElse(null);
 				if(node != null && node.getType() == ItemNodeType.PUMP) {
@@ -120,14 +120,14 @@ public final class ItemRoutePlanner {
 	}
 
 	private static boolean isEndpointAllowed(ItemNode node, boolean source, ItemTransferRequest request) {
-		boolean endpointRequiresPort = source ? request.isSourceRequiresInventoryPort() : request.isDestinationRequiresInventoryPort();
+		boolean endpointRequiresPort = source ? request.sourceRequiresInventoryPort() : request.destinationRequiresInventoryPort();
 		if(endpointRequiresPort) {
 			return node.getType() == ItemNodeType.INVENTORY_PORT;
 		}
 		if(node.getType() == ItemNodeType.INVENTORY_PORT) {
 			return true;
 		}
-		if(request.getTransportFamily() == TransportFamily.CONVEYOR && request.isAllowDirectInventoryAdjacency()) {
+		if(request.transportFamily() == TransportFamily.CONVEYOR && request.allowDirectInventoryAdjacency()) {
 			if(source) {
 				return node.isExtractionCapable();
 			}
@@ -137,10 +137,10 @@ public final class ItemRoutePlanner {
 	}
 
 	private static boolean isEdgeAllowed(ItemEdge edge, ItemTransferRequest request) {
-		if(!edge.supportsChannel(request.getChannel())) {
+		if(!edge.supportsChannel(request.channel())) {
 			return false;
 		}
-		TransportFamily family = request.getTransportFamily();
+		TransportFamily family = request.transportFamily();
 		if(family == TransportFamily.CONVEYOR) {
 			if(edge.getTransportFamily() == TransportFamily.TUBE) {
 				return false;
@@ -153,16 +153,16 @@ public final class ItemRoutePlanner {
 			if(edge.getTransportFamily() == TransportFamily.CONVEYOR) {
 				return false;
 			}
-			return !edge.isVertical() || request.isAllowVertical();
+			return !edge.isVertical() || request.allowVertical();
 		}
 		return true;
 	}
 
 	private boolean isNodeAllowed(ItemNode node, ItemTransferRequest request) {
-		if(!node.supportsChannel(request.getChannel())) {
+		if(!node.supportsChannel(request.channel())) {
 			return false;
 		}
-		TransportFamily family = request.getTransportFamily();
+		TransportFamily family = request.transportFamily();
 		if(family == TransportFamily.CONVEYOR && node.getTransportFamily() == TransportFamily.TUBE) {
 			return false;
 		}

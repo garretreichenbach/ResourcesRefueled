@@ -181,14 +181,6 @@ For each scenario, confirm the temporary logs appear; if any scenario produces n
 
 ---
 
-## Next steps I can do for you
-
-- Create test mixins that log the chosen hooks (I can implement them and run a build). — tell me "Make mixins".
-- Produce exact Mixin annotation templates (@Mixin, @Inject, method descriptors) for each target method. — tell me "Give Mixin signatures".
-- Produce an enumerated file+line-range list of the top ~20 concrete mutation sites for direct editing. — tell me "List files".
-
----
-
 ## Appendix — exact code locations (quick references found)
 
 - `src/main/java/org/schema/game/common/data/player/inventory/Inventory.java` — core; notable methods appear in this file (inc/put/handleReceived/doSwitchSlotsOrCombine/deserialize/etc.).
@@ -212,8 +204,3 @@ For each scenario, confirm the temporary logs appear; if any scenario produces n
 - Admin and automation:
   - `src/main/java/org/schema/game/server/data/admin/AdminCommandQueueElement.java` — admin give uses `addItem` in some code paths.
   - NPC/server automation code references `Inventory.sendInventoryModification` in multiple locations (search for occurrences).
-
----
-
-If you want, I will now create the temporary logging mixins in the workspace and run a quick build to validate they compile and to provide ready-to-run mixin templates. Which action should I take next?
-

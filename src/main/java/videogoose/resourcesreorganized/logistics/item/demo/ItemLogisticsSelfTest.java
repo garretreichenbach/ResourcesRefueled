@@ -55,8 +55,8 @@ public final class ItemLogisticsSelfTest {
 		boolean sawExpectedRetry = false;
 		for(long tick = 1; tick <= 5; tick++) {
 			for(ItemTransferReceipt receipt : module.tickBatch(tick)) {
-				moved += receipt.getMovedCount();
-				if(receipt.getOutcome() == ItemTransferOutcome.RETRY_QUEUED && (receipt.getMessage().contains("family=CONVEYOR") || receipt.getMessage().contains("no-route"))) {
+				moved += receipt.movedCount();
+				if(receipt.outcome() == ItemTransferOutcome.RETRY_QUEUED && (receipt.message().contains("family=CONVEYOR") || receipt.message().contains("no-route"))) {
 					sawExpectedRetry = true;
 				}
 			}
@@ -78,7 +78,7 @@ public final class ItemLogisticsSelfTest {
 			throw new IllegalStateException("expected conveyor vertical restriction retry was not observed");
 		}
 
-		if(module.tickBatch(6).stream().anyMatch(r -> r.getOutcome() == ItemTransferOutcome.FAILED)) {
+		if(module.tickBatch(6).stream().anyMatch(r -> r.outcome() == ItemTransferOutcome.FAILED)) {
 			throw new IllegalStateException("unexpected failed transfer after completion");
 		}
 

@@ -44,11 +44,11 @@ public final class LiveTransferExecutor implements ItemTransferExecutor {
 	}
 
 	private ItemTransferReceipt doExecute(ItemTransferRequest request, ItemRoute route) {
-		String sourceId = request.getSourceNodeId();
-		String destId = request.getDestinationNodeId();
-		short type = request.getItemType();
-		int meta = request.getMetaId();
-		int requested = Math.min(request.getCount(), route.maxItemsPerTick());
+		String sourceId = request.sourceNodeId();
+		String destId = request.destinationNodeId();
+		short type = request.itemType();
+		int meta = request.metaId();
+		int requested = Math.min(request.count(), route.maxItemsPerTick());
 
 		boolean sourceIsInv = sourceId.startsWith(PREFIX_INV);
 		boolean destIsInv = destId.startsWith(PREFIX_INV);
@@ -147,7 +147,7 @@ public final class LiveTransferExecutor implements ItemTransferExecutor {
 		if(ConfigManager.isDebugMode()) {
 			ResourcesReorganized instance = ResourcesReorganized.getInstance();
 			if(instance != null) {
-				instance.logWarning("[ItemLogistics] Transfer failed: " + reason + " req=" + request.getRequestId());
+				instance.logWarning("[ItemLogistics] Transfer failed: " + reason + " req=" + request.requestId());
 			}
 			return ItemTransferReceipt.of(request, ItemTransferOutcome.FALLBACK_TO_VANILLA, 0, reason);
 		}
