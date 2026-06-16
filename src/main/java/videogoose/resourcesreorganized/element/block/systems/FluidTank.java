@@ -5,7 +5,6 @@ import api.utils.element.Blocks;
 import videogoose.resourcesreorganized.ResourcesReorganized;
 import videogoose.resourcesreorganized.element.block.Block;
 import videogoose.resourcesreorganized.manager.ConfigManager;
-import videogoose.resourcesreorganized.manager.ResourceManager;
 
 /**
  * A generic pressurised fluid storage block with no special properties or interactions beyond being a storage tank.
@@ -39,8 +38,8 @@ public class FluidTank extends Block {
 
 	@Override
 	public void initResources() {
-		short textureId = (short) ResourceManager.getTexture("fluid_tank").getTextureId();
-		blockInfo.setTextureId(new short[] {textureId, textureId, textureId, textureId, textureId, textureId});
+//		short textureId = (short) ResourceManager.getTexture("fluid_tank").getTextureId();
+//		blockInfo.setTextureId(new short[] {textureId, textureId, textureId, textureId, textureId, textureId});
 	}
 
 	public static double getCapacity() {

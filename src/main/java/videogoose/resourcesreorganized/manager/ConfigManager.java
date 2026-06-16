@@ -13,6 +13,7 @@ public final class ConfigManager {
 	private static SimpleConfigBool debugMode;
 	private static SimpleConfigBool logisticsProbeEnabled;
 	private static SimpleConfigBool logisticsInterceptEnabled;
+	private static SimpleConfigBool logisticsBlockAutoPull;
 	private static SimpleConfigBool logisticsFailOpen;
 	private static SimpleConfigBool itemConveyorRequirePortForAdvanced;
 
@@ -20,7 +21,11 @@ public final class ConfigManager {
 	private static SimpleConfigInt itemLogisticsQueueSize;
 	private static SimpleConfigInt itemLogisticsRetryDelayTicks;
 	private static SimpleConfigInt itemLogisticsMaxAttempts;
+	private static SimpleConfigInt conveyorMaxPullPerCell;
+	private static SimpleConfigInt conveyorSyncIntervalTicks;
 	private static SimpleConfigInt fluidLevelsPerExplosion;
+
+	private static SimpleConfigDouble conveyorBeltSpeed;
 
 	private static SimpleConfigDouble fuelCostPerStrengthUnit;
 	private static SimpleConfigDouble fueledExtractionBonus;
@@ -44,6 +49,7 @@ public final class ConfigManager {
 		debugMode = new SimpleConfigBool(config, "debug_mode", false, "If true, enables debug logging and features.");
 		logisticsProbeEnabled = new SimpleConfigBool(config, "logistics_probe_enabled", false, "If true, enables temporary inventory mutation probe logging mixins.");
 		logisticsInterceptEnabled = new SimpleConfigBool(config, "logistics_intercept_enabled", true, "If true, logistics mixins may intercept inventory mutations instead of allowing vanilla behavior.");
+		logisticsBlockAutoPull = new SimpleConfigBool(config, "logistics_block_auto_pull", true, "If true, vanilla automatic storage pulls are cancelled so items travel through conveyors or pipes instead. Storage pull filters are always blocked; rail load/unload is still allowed when the rail-side storage is wired into a conveyor/pipe network. Manual player GUI transfers are unaffected.");
 		logisticsFailOpen = new SimpleConfigBool(config, "logistics_fail_open", false, "If true, logistics hooks fail open and allow vanilla inventory behavior on errors.");
 		itemConveyorRequirePortForAdvanced = new SimpleConfigBool(config, "item_conveyor_require_port_for_advanced", true, "If true, conveyor ingress requests require inventory-port endpoints (useful once advanced port filtering/splitting is enabled).");
 
@@ -51,6 +57,9 @@ public final class ConfigManager {
 		itemLogisticsQueueSize = new SimpleConfigInt(config, "item_logistics_max_queue_size", 2048, "Max queued item transfer requests before new requests are rejected.");
 		itemLogisticsRetryDelayTicks = new SimpleConfigInt(config, "item_logistics_retry_delay_ticks", 10, "Delay (in ticks) before retrying transfers that had no route or temporary failure.");
 		itemLogisticsMaxAttempts = new SimpleConfigInt(config, "item_logistics_max_attempts", 6, "Maximum attempts for a transfer request before it is marked failed.");
+		conveyorBeltSpeed = new SimpleConfigDouble(config, "conveyor_belt_speed", 0.15, "Fraction of a block a conveyor item advances per server tick (1.0 = one block per tick).");
+		conveyorMaxPullPerCell = new SimpleConfigInt(config, "conveyor_max_pull_per_cell", 16, "Max items pulled from a source inventory onto a single conveyor cell at once.");
+		conveyorSyncIntervalTicks = new SimpleConfigInt(config, "conveyor_sync_interval_ticks", 10, "Server ticks between syncing moving conveyor contents to clients (topology changes always sync immediately). Higher = less bandwidth, choppier client-side updates.");
 
 		fuelCostPerStrengthUnit = new SimpleConfigDouble(config, "fuel_cost_per_strength_unit", 0.5, "Heliogen canisters consumed per unit of extractor strength per tick.");
 		fueledExtractionBonus = new SimpleConfigDouble(config, "fueled_extraction_bonus", 0.5, "Fraction of additional output added per consumed canister when extractors are fueled with Heliogen (e.g. 0.5 = +50% resources per canister used).");
@@ -90,6 +99,10 @@ public final class ConfigManager {
 		return boolOrDefault(logisticsInterceptEnabled, true);
 	}
 
+	public static boolean isLogisticsBlockAutoPull() {
+		return boolOrDefault(logisticsBlockAutoPull, true);
+	}
+
 	public static boolean isLogisticsFailOpen() {
 		return boolOrDefault(logisticsFailOpen, false);
 	}
@@ -112,6 +125,18 @@ public final class ConfigManager {
 
 	public static int getItemLogisticsMaxAttempts() {
 		return clampInt(intOrDefault(itemLogisticsMaxAttempts, 6), 1, 1000000);
+	}
+
+	public static float getConveyorBeltSpeed() {
+		return (float) Math.max(0.001, Math.min(1.0, doubleOrDefault(conveyorBeltSpeed, 0.15)));
+	}
+
+	public static int getConveyorMaxPullPerCell() {
+		return clampInt(intOrDefault(conveyorMaxPullPerCell, 16), 1, 1000000);
+	}
+
+	public static int getConveyorSyncIntervalTicks() {
+		return clampInt(intOrDefault(conveyorSyncIntervalTicks, 10), 1, 1000000);
 	}
 
 	public static double getFuelCostPerStrengthUnit() {

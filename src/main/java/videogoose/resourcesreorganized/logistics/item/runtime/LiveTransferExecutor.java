@@ -33,6 +33,19 @@ public final class LiveTransferExecutor implements ItemTransferExecutor {
 		return EXECUTING.get();
 	}
 
+	/**
+	 * Marks the current thread as performing managed inventory mutations (e.g. conveyor belt transfers)
+	 * so the {@code inc}/{@code put} mixin ingress skips re-interception. Must be paired with
+	 * {@link #endManaged()} in a {@code finally} block.
+	 */
+	public static void beginManaged() {
+		EXECUTING.set(Boolean.TRUE);
+	}
+
+	public static void endManaged() {
+		EXECUTING.set(Boolean.FALSE);
+	}
+
 	@Override
 	public ItemTransferReceipt execute(ItemTransferRequest request, ItemRoute route, long currentTick) {
 		EXECUTING.set(Boolean.TRUE);

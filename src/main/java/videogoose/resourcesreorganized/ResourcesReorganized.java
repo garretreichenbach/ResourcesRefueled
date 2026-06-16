@@ -6,6 +6,7 @@ import api.mod.StarLoader;
 import api.mod.StarMod;
 import org.schema.schine.resource.ResourceLoader;
 import videogoose.resourcesreorganized.commands.GiveFluidContainerCommand;
+import videogoose.resourcesreorganized.commands.ItemTopologyCommand;
 import videogoose.resourcesreorganized.commands.ReloadConfigCommand;
 import videogoose.resourcesreorganized.element.ElementRegistry;
 import videogoose.resourcesreorganized.fuel.EntityFuelManager;
@@ -97,5 +98,6 @@ public final class ResourcesReorganized extends StarMod {
 	private void registerCommands() {
 		StarLoader.registerCommand(new GiveFluidContainerCommand());
 		StarLoader.registerCommand(new ReloadConfigCommand());
+		StarLoader.registerCommand(new ItemTopologyCommand());
 	}
 }

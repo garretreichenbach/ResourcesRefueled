@@ -21,6 +21,7 @@ import videogoose.resourcesreorganized.element.ElementRegistry;
 import videogoose.resourcesreorganized.gui.FluidPortDialog;
 import videogoose.resourcesreorganized.manager.ConfigManager;
 import videogoose.resourcesreorganized.systems.FluidSystemModule;
+import videogoose.resourcesreorganized.systems.ItemTransportSystemModule;
 
 import java.util.Collections;
 import java.util.List;
@@ -28,26 +29,45 @@ import java.util.List;
 public class SegmentPieceEventHandler implements SegmentPieceAddListener, SegmentPieceRemoveListener, SegmentPieceKilledListener, SegmentPieceActivateListener, SegmentPiecePlayerInteractListener {
 	@Override
 	public void onAdd(SegmentController segmentController, short type, byte orientation, byte x, byte y, byte z, Segment segment, boolean updateSegmentBuffer, long index, boolean server) {
+		if(!server || !(segmentController instanceof ManagedUsableSegmentController<?>)) {
+			return;
+		}
+		ManagerContainer<?> container = ((ManagedUsableSegmentController<?>) segmentController).getManagerContainer();
 		if(ElementRegistry.canInteractWithFluid(type) || ElementRegistry.isPipe(type)) {
-			if(server && segmentController instanceof ManagedUsableSegmentController<?>) {
-				ManagerContainer<?> container = ((ManagedUsableSegmentController<?>) segmentController).getManagerContainer();
-				if(container.getModMCModule(ElementRegistry.FLUID_TANK.getId()) instanceof FluidSystemModule) {
-					FluidSystemModule module = (FluidSystemModule) container.getModMCModule(ElementRegistry.FLUID_TANK.getId());
-					module.onPlace(index, type);
-				}
+			if(container.getModMCModule(ElementRegistry.FLUID_TANK.getId()) instanceof FluidSystemModule) {
+				FluidSystemModule module = (FluidSystemModule) container.getModMCModule(ElementRegistry.FLUID_TANK.getId());
+				module.onPlace(index, type);
+			}
+		}
+		if(container.getModMCModule(ElementRegistry.CONVEYOR_BELT.getId()) instanceof ItemTransportSystemModule) {
+			ItemTransportSystemModule itemModule = (ItemTransportSystemModule) container.getModMCModule(ElementRegistry.CONVEYOR_BELT.getId());
+			if(ElementRegistry.isItemTransport(type)) {
+				itemModule.onPlace(index, type, orientation);
+			} else {
+				itemModule.onNeighborChange(index);
 			}
 		}
 	}
 
 	@Override
 	public void onBlockRemove(short type, int segmentSize, byte x, byte y, byte z, byte b3, Segment segment, boolean preserveControl, boolean server) {
+		if(!server || !(segment.getSegmentController() instanceof ManagedUsableSegmentController<?>)) {
+			return;
+		}
+		ManagerContainer<?> container = ((ManagedUsableSegmentController<?>) segment.getSegmentController()).getManagerContainer();
+		long index = ElementCollection.getIndex(x, y, z);
 		if(ElementRegistry.canInteractWithFluid(type) || ElementRegistry.isPipe(type)) {
-			if(server && segment.getSegmentController() instanceof ManagedUsableSegmentController<?>) {
-				ManagerContainer<?> container = ((ManagedUsableSegmentController<?>) segment.getSegmentController()).getManagerContainer();
-				if(container.getModMCModule(ElementRegistry.FLUID_TANK.getId()) instanceof FluidSystemModule) {
-					FluidSystemModule module = (FluidSystemModule) container.getModMCModule(ElementRegistry.FLUID_TANK.getId());
-					module.onRemove(ElementCollection.getIndex(x, y, z), type);
-				}
+			if(container.getModMCModule(ElementRegistry.FLUID_TANK.getId()) instanceof FluidSystemModule) {
+				FluidSystemModule module = (FluidSystemModule) container.getModMCModule(ElementRegistry.FLUID_TANK.getId());
+				module.onRemove(index, type);
+			}
+		}
+		if(container.getModMCModule(ElementRegistry.CONVEYOR_BELT.getId()) instanceof ItemTransportSystemModule) {
+			ItemTransportSystemModule itemModule = (ItemTransportSystemModule) container.getModMCModule(ElementRegistry.CONVEYOR_BELT.getId());
+			if(ElementRegistry.isItemTransport(type)) {
+				itemModule.onRemove(index, type);
+			} else {
+				itemModule.onNeighborChange(index);
 			}
 		}
 	}

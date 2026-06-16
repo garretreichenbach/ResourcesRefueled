@@ -2,10 +2,9 @@ package videogoose.resourcesreorganized.logistics;
 
 import org.schema.game.common.data.player.inventory.Inventory;
 import videogoose.resourcesreorganized.ResourcesReorganized;
-import videogoose.resourcesreorganized.logistics.item.graph.ItemNode;
-import videogoose.resourcesreorganized.logistics.item.graph.ItemNodeType;
-import videogoose.resourcesreorganized.logistics.item.graph.ItemEdge;
 import videogoose.resourcesreorganized.logistics.item.graph.TransportFamily;
+import videogoose.resourcesreorganized.logistics.item.model.ItemTransferOutcome;
+import videogoose.resourcesreorganized.logistics.item.model.ItemTransferReceipt;
 import videogoose.resourcesreorganized.logistics.item.model.ItemTransferRequest;
 import videogoose.resourcesreorganized.logistics.item.runtime.InventoryReferenceRegistry;
 import videogoose.resourcesreorganized.logistics.item.runtime.ItemEndpointPolicyRegistry;
@@ -14,9 +13,12 @@ import videogoose.resourcesreorganized.logistics.item.runtime.LiveTransferExecut
 import videogoose.resourcesreorganized.manager.ConfigManager;
 import videogoose.resourcesreorganized.manager.ItemLogisticsManager;
 
+import java.util.List;
+
 /**
  * Lightweight bridge from inventory mutation probes into the item logistics runtime.
- * Current behavior mirrors mutations as local inventory intents for early integration.
+ * Intercept is gated on the inventory being a registered logistics endpoint
+ * (see {@link InventoryReferenceRegistry}); unregistered inventories pass through unchanged.
  */
 public final class ItemMutationIngressAdapter {
 
@@ -38,9 +40,12 @@ public final class ItemMutationIngressAdapter {
 			return false;
 		}
 
-		int normalizedCount = Math.max(1, Math.abs(count));
 		String inventoryNodeId = inventoryNodeId(inventory);
-		InventoryReferenceRegistry.register(inventoryNodeId, inventory);
+		if(!InventoryReferenceRegistry.isRegistered(inventoryNodeId)) {
+			return false;
+		}
+
+		int normalizedCount = Math.max(1, Math.abs(count));
 		String adjacentNodeId = adjacentNodeId(inventory);
 		long tick = System.currentTimeMillis() / 50L;
 		boolean inbound = !"inc".equals(operation) || count >= 0;
@@ -55,10 +60,6 @@ public final class ItemMutationIngressAdapter {
 
 		try {
 			ItemLogisticsSystemModule module = ItemLogisticsManager.getSystemModule();
-			module.registerNode(new ItemNode(inventoryNodeId, ItemNodeType.INVENTORY_PORT, 64, TransportFamily.NEUTRAL, true, -1));
-			module.registerNode(new ItemNode(adjacentNodeId, ItemNodeType.CONVEYOR, 16, TransportFamily.CONVEYOR, true, -1));
-			module.connectNodes(new ItemEdge(inventoryNodeId, adjacentNodeId, 16, TransportFamily.CONVEYOR, false, -1));
-			module.connectNodes(new ItemEdge(adjacentNodeId, inventoryNodeId, 16, TransportFamily.CONVEYOR, false, -1));
 
 			ItemTransferRequest request = new ItemTransferRequest(
 					sourceNodeId,
@@ -76,17 +77,24 @@ public final class ItemMutationIngressAdapter {
 					sourceRequiresInventoryPort,
 					destinationRequiresInventoryPort);
 
-			if(module.enqueue(request)) {
-				module.tickBatch(tick);
-				if(ConfigManager.isDebugMode()) {
-					ResourcesReorganized instance = ResourcesReorganized.getInstance();
-					if(instance != null) {
-						instance.logInfo("[ItemLogistics] ingress op=" + operation + " " + sourceNodeId + " -> " + destinationNodeId + " count=" + normalizedCount + " sourceRequirePort=" + sourceRequiresInventoryPort + " destinationRequirePort=" + destinationRequiresInventoryPort);
-					}
-				}
-				return true;
+			if(!module.enqueue(request)) {
+				return false;
 			}
-			return false;
+			List<ItemTransferReceipt> receipts = module.tickBatch(tick);
+			boolean handled = false;
+			for(ItemTransferReceipt receipt : receipts) {
+				if(receipt.requestId().equals(request.requestId()) && receipt.outcome() == ItemTransferOutcome.SUCCESS) {
+					handled = true;
+					break;
+				}
+			}
+			if(handled && ConfigManager.isDebugMode()) {
+				ResourcesReorganized instance = ResourcesReorganized.getInstance();
+				if(instance != null) {
+					instance.logInfo("[ItemLogistics] ingress op=" + operation + " " + sourceNodeId + " -> " + destinationNodeId + " count=" + normalizedCount + " handled");
+				}
+			}
+			return handled;
 		} catch(Exception exception) {
 			ResourcesReorganized instance = ResourcesReorganized.getInstance();
 			if(instance != null && ConfigManager.isDebugMode()) {

@@ -3,7 +3,7 @@
 	"author": "VideoGoose (TheDerpGamer)",
 	"description": "Replaces StarMade's item teleportation with a proper logistics system. Now with fluids!",
 	"version": "0.1.0",
-	"starmade_version": "0.303.3",
+	"starmade_version": "0.303.25",
 	"client_mod": true,
 	"server_mod": true,
 	"main_class": "videogoose.resourcesreorganized.ResourcesReorganized",

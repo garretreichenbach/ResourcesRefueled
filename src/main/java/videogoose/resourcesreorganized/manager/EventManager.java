@@ -8,18 +8,22 @@ import api.listener.events.register.ManagerContainerRegisterEvent;
 import api.listener.events.world.WorldSaveEvent;
 import api.listener.fastevents.FastListenerCommon;
 import api.mod.StarLoader;
+import api.utils.game.lodvisualstate.BlockVisualStateAPI;
 import org.ithirahad.resourcesresourced.events.HarvesterStrengthUpdateEvent;
 import videogoose.resourcesreorganized.ResourcesReorganized;
 import videogoose.resourcesreorganized.fuel.EntityFuelManager;
 import videogoose.resourcesreorganized.fuel.StellarFuelManager;
 import videogoose.resourcesreorganized.listener.*;
 import videogoose.resourcesreorganized.systems.FluidSystemModule;
+import videogoose.resourcesreorganized.systems.ItemTransportSystemModule;
 
 public class EventManager {
 
 	private static final SegmentPieceEventHandler segmentPieceEventHandler = new SegmentPieceEventHandler();
 
 	public static void initialize(ResourcesReorganized instance) {
+		BlockVisualStateAPI.registerProvider(new videogoose.resourcesreorganized.logistics.item.belt.ConveyorModelStateProvider());
+
 		FastListenerCommon.segmentPieceAddListeners.add(segmentPieceEventHandler);
 		FastListenerCommon.segmentPieceRemoveListeners.add(segmentPieceEventHandler);
 		FastListenerCommon.segmentPieceKilledListeners.add(segmentPieceEventHandler);
@@ -44,6 +48,9 @@ public class EventManager {
 			public void onEvent(ManagerContainerRegisterEvent event) {
 				FluidSystemModule tankModule = new FluidSystemModule(event.getContainer());
 				event.addModMCModule(tankModule);
+
+				ItemTransportSystemModule itemTransportModule = new ItemTransportSystemModule(event.getContainer());
+				event.addModMCModule(itemTransportModule);
 
 				// Sync the virtualized fuel cache from the live entity state now that it's loaded.
 				// Canister count defaults to 0 at registration time (inventory may not be fully

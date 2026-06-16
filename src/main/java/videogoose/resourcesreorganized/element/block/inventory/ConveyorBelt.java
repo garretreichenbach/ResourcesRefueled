@@ -28,12 +28,22 @@ public class ConveyorBelt extends Block {
 		blockInfo.canActivate = true;
 		blockInfo.shoppable = true;
 		blockInfo.inventoryGroup = "ItemTransport";
-		blockInfo.blockStyle = BlockStyle.SPRITE;
+		blockInfo.blockStyle = BlockStyle.NORMAL;
 		blockInfo.blended = true;
 	}
 
 	@Override
-	public void postInitData() {}
+	public void postInitData() {
+		/*blockInfo.lodShapeString = ResourceManager.modelRef(ConveyorModelStates.MODEL_SINGLE);
+		blockInfo.setLodVisualStateDef(BlockVisualStateDef.builder()
+				.setDefaultState(ConveyorModelStates.SINGLE)
+				.addState(ConveyorModelStates.SINGLE, ResourceManager.modelRef(ConveyorModelStates.MODEL_SINGLE))
+				.addState(ConveyorModelStates.END, ResourceManager.modelRef(ConveyorModelStates.MODEL_END))
+				.addState(ConveyorModelStates.MID, ResourceManager.modelRef(ConveyorModelStates.MODEL_MID))
+				.addState(ConveyorModelStates.PORT, ResourceManager.modelRef(ConveyorModelStates.MODEL_PORT))
+				.addState(ConveyorModelStates.PORT_MID, ResourceManager.modelRef(ConveyorModelStates.MODEL_PORT_MID))
+				.build());*/
+	}
 
 	@Override
 	public void initResources() {

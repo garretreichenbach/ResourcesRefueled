@@ -31,6 +31,7 @@ public final class InventoryMutationProbe {
 	}
 
 	public static void logHandleReceived(Inventory inventory, InventoryMultMod mod, Object inventoryInterface) {
+		if(inventory == null || mod.inventory == null || mod.inventory.getInventoryHolder() == null) return;
 		String interfaceName = (inventoryInterface == null) ? "null" : inventoryInterface.getClass().getSimpleName();
 		log("handleReceived", inventory, "mod=" + mod + " iface=" + interfaceName);
 	}

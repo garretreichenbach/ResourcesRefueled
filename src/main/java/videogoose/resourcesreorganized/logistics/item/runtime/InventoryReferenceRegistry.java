@@ -25,6 +25,21 @@ public final class InventoryReferenceRegistry {
 		REGISTRY.put(nodeId, new WeakReference<>(inventory));
 	}
 
+	public static boolean isRegistered(String nodeId) {
+		if(nodeId == null) {
+			return false;
+		}
+		WeakReference<Inventory> ref = REGISTRY.get(nodeId);
+		if(ref == null) {
+			return false;
+		}
+		if(ref.get() == null) {
+			REGISTRY.remove(nodeId);
+			return false;
+		}
+		return true;
+	}
+
 	public static Optional<Inventory> resolve(String nodeId) {
 		if(nodeId == null) {
 			return Optional.empty();

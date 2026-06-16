@@ -6,7 +6,8 @@
 	"target": "@env(DEFAULT)",
 	"mixins": [
 		"inventory.InventoryMutationMixin",
-		"inventory.RemoteSectorMutationMixin"
+		"inventory.RemoteSectorMutationMixin",
+		"inventory.StorageAutoPullMixin"
 	],
 	"client": [],
 	"server": [],

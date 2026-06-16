@@ -93,6 +93,10 @@ public enum ElementRegistry {
 		return id == Blocks.PIPE.getId() || id == Blocks.PIPE_CROSS.getId() || id == Blocks.PIPE_TEE.getId() || id == Blocks.PIPE_ELBOW.getId() || id == PIPE_VALVE.getId() || id == PIPE_FILTER.getId() || id == PIPE_PUMP.getId();
 	}
 
+	public static boolean isItemTransport(short id) {
+		return id == CONVEYOR_BELT.getId() || id == ITEM_TUBE.getId() || id == ITEM_PUMP.getId();
+	}
+
 	public static boolean canInteractWithFluid(short id) {
 		return id == FLUID_TANK.getId() || id == FLUID_PORT.getId() || id == HELIOGEN_CONDENSER.getId() || id == HELIOGEN_REFINERY.getId() || id == MAGMATIC_EXTRACTOR.id || id == VAPOR_SIPHON.id;
 	}
