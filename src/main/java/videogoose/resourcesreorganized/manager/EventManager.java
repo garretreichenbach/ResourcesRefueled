@@ -8,7 +8,6 @@ import api.listener.events.register.ManagerContainerRegisterEvent;
 import api.listener.events.world.WorldSaveEvent;
 import api.listener.fastevents.FastListenerCommon;
 import api.mod.StarLoader;
-import api.utils.game.lodvisualstate.BlockVisualStateAPI;
 import org.ithirahad.resourcesresourced.events.HarvesterStrengthUpdateEvent;
 import videogoose.resourcesreorganized.ResourcesReorganized;
 import videogoose.resourcesreorganized.fuel.EntityFuelManager;
@@ -22,8 +21,6 @@ public class EventManager {
 	private static final SegmentPieceEventHandler segmentPieceEventHandler = new SegmentPieceEventHandler();
 
 	public static void initialize(ResourcesReorganized instance) {
-		BlockVisualStateAPI.registerProvider(new videogoose.resourcesreorganized.logistics.item.belt.ConveyorModelStateProvider());
-
 		FastListenerCommon.segmentPieceAddListeners.add(segmentPieceEventHandler);
 		FastListenerCommon.segmentPieceRemoveListeners.add(segmentPieceEventHandler);
 		FastListenerCommon.segmentPieceKilledListeners.add(segmentPieceEventHandler);

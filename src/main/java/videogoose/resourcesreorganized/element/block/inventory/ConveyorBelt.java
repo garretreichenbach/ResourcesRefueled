@@ -1,52 +1,14 @@
 package videogoose.resourcesreorganized.element.block.inventory;
 
-import api.config.BlockConfig;
-import api.utils.element.Blocks;
-import org.schema.game.client.view.cubes.shapes.BlockStyle;
-import videogoose.resourcesreorganized.ResourcesReorganized;
-import videogoose.resourcesreorganized.element.block.Block;
+import videogoose.resourcesreorganized.logistics.item.belt.BeltShape;
 
-public class ConveyorBelt extends Block {
+public class ConveyorBelt extends ConveyorBeltBlock {
 
 	public ConveyorBelt() {
-		super("Conveyor Belt");
-	}
-
-	@Override
-	public void initData() {
-		blockInfo = BlockConfig.newElement(ResourcesReorganized.getInstance(), name, new short[] {0, 0, 0, 0, 0, 0});
-		blockInfo.type = Blocks.PIPE.getInfo().type;
-		blockInfo.mass = Blocks.PIPE.getInfo().mass * 1.3f;
-		blockInfo.price = Blocks.PIPE.getInfo().price * 2;
-		blockInfo.volume = Blocks.PIPE.getInfo().volume * 1.3f;
-		blockInfo.description = """
+		super("Conveyor Belt", BeltShape.STRAIGHT, """
 				Basic item transport line.
 				Extracts from adjacent inventories without a pump.
-				Supports horizontal and diagonal routing only (no vertical transfer).
-				Use inventory ports for advanced filtering, splitting, and combining behavior.""";
-		blockInfo.placable = true;
-		blockInfo.canActivate = true;
-		blockInfo.shoppable = true;
-		blockInfo.inventoryGroup = "ItemTransport";
-		blockInfo.blockStyle = BlockStyle.NORMAL;
-		blockInfo.blended = true;
-	}
-
-	@Override
-	public void postInitData() {
-		/*blockInfo.lodShapeString = ResourceManager.modelRef(ConveyorModelStates.MODEL_SINGLE);
-		blockInfo.setLodVisualStateDef(BlockVisualStateDef.builder()
-				.setDefaultState(ConveyorModelStates.SINGLE)
-				.addState(ConveyorModelStates.SINGLE, ResourceManager.modelRef(ConveyorModelStates.MODEL_SINGLE))
-				.addState(ConveyorModelStates.END, ResourceManager.modelRef(ConveyorModelStates.MODEL_END))
-				.addState(ConveyorModelStates.MID, ResourceManager.modelRef(ConveyorModelStates.MODEL_MID))
-				.addState(ConveyorModelStates.PORT, ResourceManager.modelRef(ConveyorModelStates.MODEL_PORT))
-				.addState(ConveyorModelStates.PORT_MID, ResourceManager.modelRef(ConveyorModelStates.MODEL_PORT_MID))
-				.build());*/
-	}
-
-	@Override
-	public void initResources() {
-
+				Carries items straight through: in the back face, out the front.
+				Use the turn variants to route around bends, and inventory ports for filtering, splitting, and combining.""");
 	}
 }

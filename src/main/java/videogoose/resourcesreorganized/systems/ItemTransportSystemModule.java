@@ -4,10 +4,16 @@ import api.network.PacketReadBuffer;
 import api.network.PacketWriteBuffer;
 import api.utils.game.module.util.SystemModule;
 import it.unimi.dsi.fastutil.longs.LongIterator;
+import org.schema.common.util.linAlg.Vector3i;
 import org.schema.game.common.controller.SegmentController;
 import org.schema.game.common.controller.elements.ManagerContainer;
+import org.schema.game.common.data.element.ElementCollection;
 import org.schema.game.common.data.player.inventory.Inventory;
+import org.schema.game.common.data.world.Sector;
+import org.schema.game.server.data.GameServerState;
 import org.schema.schine.graphicsengine.core.Timer;
+
+import javax.vecmath.Vector3f;
 import videogoose.resourcesreorganized.ResourcesReorganized;
 import videogoose.resourcesreorganized.element.ElementRegistry;
 import videogoose.resourcesreorganized.logistics.item.belt.BeltItem;
@@ -77,10 +83,42 @@ public class ItemTransportSystemModule extends SystemModule {
 	}
 
 	public void onRemove(long index, short blockType) {
+		// Any stack riding the removed belt cell spills into the sector as a free item, mirroring how
+		// the vanilla game drops inventory contents when a storage block is destroyed.
+		BeltItem dropped;
+		synchronized(cellItems) {
+			dropped = cellItems.remove(index);
+		}
+		if(dropped != null) {
+			dropBeltItem(index, dropped);
+			flagUpdatedData();
+		}
 		boolean changed = ItemTopologyMutationService.onRemove(index, blockType, conveyorSegments, tubeSegments, networks, managerContainer, debugLogger());
 		if(changed) {
 			syncRegistry();
 			flagUpdatedData();
+		}
+	}
+
+	/**
+	 * Spills a belt stack into the sector at the cell's world position as a floating {@link FreeItem},
+	 * the same drop the engine uses for destroyed inventories. Server-only and best-effort: a failure to
+	 * resolve the sector must never abort block removal.
+	 */
+	private void dropBeltItem(long index, BeltItem item) {
+		if(item == null || item.count <= 0 || item.type <= 0 || !segmentController.isOnServer()) {
+			return;
+		}
+		try {
+			Vector3i pos = new Vector3i();
+			ElementCollection.getPosFromIndex(index, pos);
+			Vector3f world = segmentController.getAbsoluteElementWorldPositionShifted(pos, new Vector3f());
+			Sector sector = ((GameServerState) segmentController.getState()).getUniverse().getSector(segmentController.getSectorId());
+			if(sector != null && sector.getRemoteSector() != null) {
+				sector.getRemoteSector().addItem(world, item.type, item.metaId, item.count);
+			}
+		} catch(Exception e) {
+			ResourcesReorganized.getInstance().logException("Failed to drop conveyor belt item on removal", e);
 		}
 	}
 
@@ -122,8 +160,13 @@ public class ItemTransportSystemModule extends SystemModule {
 		if(conveyorSegments.isEmpty() && cellItems.isEmpty()) {
 			return;
 		}
-		boolean changed = ConveyorBeltSimulator.tick(conveyorSegments, cellItems, managerContainer,
-				ConfigManager.getConveyorBeltSpeed(), ConfigManager.getConveyorMaxPullPerCell(), debugLogger());
+		// The simulator structurally mutates cellItems; lock so a concurrent serialize/render iteration
+		// (which lock the same map) can't observe it mid-update.
+		boolean changed;
+		synchronized(cellItems) {
+			changed = ConveyorBeltSimulator.tick(conveyorSegments, cellItems, managerContainer,
+					ConfigManager.getConveyorBeltSpeed(), ConfigManager.getConveyorMaxPullPerCell(), debugLogger());
+		}
 		// Topology edits sync immediately (via onPlace/onRemove). Per-tick item movement is batched:
 		// flush a keyframe at most every conveyor_sync_interval_ticks so we don't re-serialize the
 		// whole module every tick. Clients interpolate item progress between keyframes.
@@ -159,7 +202,11 @@ public class ItemTransportSystemModule extends SystemModule {
 		buffer.writeInt(TAG_VERSION);
 		writeSegments(buffer, conveyorSegments);
 		writeSegments(buffer, tubeSegments);
-		writeCellItems(buffer, cellItems);
+		// cellItems is read by the client render thread; serialization may run off the sim thread, so
+		// hold its monitor while iterating (the renderer and the other mutators lock the same map).
+		synchronized(cellItems) {
+			writeCellItems(buffer, cellItems);
+		}
 	}
 
 	@Override
@@ -175,8 +222,11 @@ public class ItemTransportSystemModule extends SystemModule {
 			pendingRebuild = true;
 		}
 		if(version >= 2) {
-			cellItems.clear();
-			readCellItems(buffer, cellItems);
+			// Replace the whole map atomically w.r.t. the render thread iterating it.
+			synchronized(cellItems) {
+				cellItems.clear();
+				readCellItems(buffer, cellItems);
+			}
 		}
 	}
 

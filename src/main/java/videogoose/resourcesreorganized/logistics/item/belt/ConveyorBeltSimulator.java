@@ -16,9 +16,13 @@ import java.util.function.Consumer;
  * Server-side simulation of items physically travelling along conveyor belts.
  * <p>
  * Each belt cell holds at most one {@link BeltItem}. Items advance by {@code speed} per tick; when a
- * stack reaches the end of its cell it moves to the forward cell (if a belt and empty), is inserted
- * into a forward inventory port, or stalls (back-pressure). Empty cells whose backward face touches an
- * inventory pull a fresh stack from it.
+ * stack reaches the end of its cell it moves past the cell's exit face &mdash; into the next belt (if
+ * that belt's entry face points back at us and it is empty), into an inventory port, or it stalls
+ * (back-pressure). Empty cells whose entry face touches an inventory pull a fresh stack from it.
+ * <p>
+ * Which faces those are comes from the cell's {@link BeltShape}, i.e. from which belt block the player
+ * placed &mdash; a straight belt runs back-to-front, a turn enters through a side or leaves through the
+ * top.
  * <p>
  * All inventory mutations are wrapped in {@link LiveTransferExecutor}'s managed guard so the
  * {@code inc}/{@code put} mixin ingress does not re-route them through the legacy instant-transfer path.
@@ -64,9 +68,15 @@ public final class ConveyorBeltSimulator {
 				continue;
 			}
 
-			long forward = BeltDirection.forwardIndex(cellIndex, seg.orientation());
-			if(conveyorSegments.containsKey(forward)) {
-				if(!cellItems.containsKey(forward)) {
+			BeltShape shape = BeltShape.orStraight(seg.blockType());
+			long forward = shape.outputIndex(cellIndex, seg.orientation());
+			ItemTransportSegment forwardSeg = conveyorSegments.get(forward);
+			if(forwardSeg != null) {
+				// The next belt only takes the stack through its own entry face: a turn pointed the wrong
+				// way is a dead end that backs the line up, not a silent side-load.
+				boolean accepts = BeltShape.orStraight(forwardSeg.blockType())
+						.acceptsFrom(forward, forwardSeg.orientation(), cellIndex);
+				if(accepts && !cellItems.containsKey(forward)) {
 					cellItems.remove(cellIndex);
 					item.progress = 0.0f;
 					cellItems.put(forward, item);
@@ -96,7 +106,7 @@ public final class ConveyorBeltSimulator {
 			if(cellItems.containsKey(cellIndex)) {
 				continue;
 			}
-			long input = BeltDirection.backwardIndex(cellIndex, seg.orientation());
+			long input = BeltShape.orStraight(seg.blockType()).inputIndex(cellIndex, seg.orientation());
 			Inventory source = managerContainer.getInventory(input);
 			if(source == null) {
 				continue;

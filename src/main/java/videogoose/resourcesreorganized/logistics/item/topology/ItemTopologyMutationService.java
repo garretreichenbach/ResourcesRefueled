@@ -203,7 +203,7 @@ public final class ItemTopologyMutationService {
 	}
 
 	public static TransportFamily familyFor(short blockType) {
-		if(blockType == ElementRegistry.CONVEYOR_BELT.getId()) {
+		if(ElementRegistry.isConveyorBelt(blockType)) {
 			return TransportFamily.CONVEYOR;
 		}
 		if(blockType == ElementRegistry.ITEM_TUBE.getId() || blockType == ElementRegistry.ITEM_PUMP.getId()) {

@@ -5,6 +5,9 @@ import api.utils.element.Blocks;
 import org.schema.game.common.data.element.ElementInformation;
 import videogoose.resourcesreorganized.ResourcesReorganized;
 import videogoose.resourcesreorganized.element.block.inventory.ConveyorBelt;
+import videogoose.resourcesreorganized.element.block.inventory.ConveyorBeltLeftTurn;
+import videogoose.resourcesreorganized.element.block.inventory.ConveyorBeltRightTurn;
+import videogoose.resourcesreorganized.element.block.inventory.ConveyorBeltUpTurn;
 import videogoose.resourcesreorganized.element.block.inventory.ItemPump;
 import videogoose.resourcesreorganized.element.block.inventory.ItemTube;
 import videogoose.resourcesreorganized.element.block.pipes.PipeFilter;
@@ -16,6 +19,7 @@ import videogoose.resourcesreorganized.element.block.systems.HeliogenCondenser;
 import videogoose.resourcesreorganized.element.block.systems.HeliogenRefinery;
 import videogoose.resourcesreorganized.element.item.FluidCanister;
 import videogoose.resourcesreorganized.element.item.HeliogenPlasma;
+import videogoose.resourcesreorganized.logistics.item.belt.BeltShape;
 import videogoose.resourcesreorganized.manager.ConfigManager;
 
 /**
@@ -28,6 +32,9 @@ public enum ElementRegistry {
 
 	//Item network blocks
 	CONVEYOR_BELT(new ConveyorBelt()),
+	CONVEYOR_BELT_LEFT_TURN(new ConveyorBeltLeftTurn()),
+	CONVEYOR_BELT_RIGHT_TURN(new ConveyorBeltRightTurn()),
+	CONVEYOR_BELT_UP_TURN(new ConveyorBeltUpTurn()),
 	ITEM_TUBE(new ItemTube()),
 	ITEM_PUMP(new ItemPump()),
 
@@ -93,8 +100,13 @@ public enum ElementRegistry {
 		return id == Blocks.PIPE.getId() || id == Blocks.PIPE_CROSS.getId() || id == Blocks.PIPE_TEE.getId() || id == Blocks.PIPE_ELBOW.getId() || id == PIPE_VALVE.getId() || id == PIPE_FILTER.getId() || id == PIPE_PUMP.getId();
 	}
 
+	/** Any conveyor belt shape (straight or one of the turns) — each shape is a separate block id. */
+	public static boolean isConveyorBelt(short id) {
+		return BeltShape.isBelt(id);
+	}
+
 	public static boolean isItemTransport(short id) {
-		return id == CONVEYOR_BELT.getId() || id == ITEM_TUBE.getId() || id == ITEM_PUMP.getId();
+		return isConveyorBelt(id) || id == ITEM_TUBE.getId() || id == ITEM_PUMP.getId();
 	}
 
 	public static boolean canInteractWithFluid(short id) {

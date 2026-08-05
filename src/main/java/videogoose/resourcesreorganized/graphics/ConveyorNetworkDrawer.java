@@ -6,6 +6,7 @@ import com.bulletphysics.collision.dispatch.CollisionWorld;
 import com.bulletphysics.linearmath.Transform;
 import org.lwjgl.opengl.GL11;
 import org.schema.common.util.linAlg.Vector3i;
+import org.schema.game.client.controller.manager.ingame.PlayerInteractionControlManager;
 import org.schema.game.client.data.GameClientState;
 import org.schema.game.client.view.BuildModeDrawer;
 import org.schema.game.client.view.gui.shiphud.newhud.Hud;
@@ -14,6 +15,7 @@ import org.schema.game.common.controller.ManagedUsableSegmentController;
 import org.schema.game.common.controller.SegmentBufferManager;
 import org.schema.game.common.controller.SegmentController;
 import org.schema.game.common.data.SegmentPiece;
+import org.schema.game.common.data.element.Element;
 import org.schema.game.common.data.element.ElementCollection;
 import org.schema.game.common.data.element.ElementInformation;
 import org.schema.game.common.data.element.ElementKeyMap;
@@ -26,8 +28,9 @@ import org.schema.schine.graphicsengine.core.Timer;
 import org.schema.schine.graphicsengine.core.settings.ContextFilter;
 import org.schema.schine.graphicsengine.core.settings.EngineSettings;
 import videogoose.resourcesreorganized.element.ElementRegistry;
-import videogoose.resourcesreorganized.logistics.item.belt.BeltDirection;
 import videogoose.resourcesreorganized.logistics.item.belt.BeltItem;
+import videogoose.resourcesreorganized.logistics.item.belt.BeltShape;
+import videogoose.resourcesreorganized.manager.ConfigManager;
 import videogoose.resourcesreorganized.systems.ItemTransportSystemModule;
 
 import javax.vecmath.Vector3f;
@@ -40,8 +43,8 @@ import java.util.Queue;
 import java.util.Set;
 
 /**
- * Debug-mode overlay that draws an arrow on each conveyor belt showing the item-travel direction
- * (as decoded by {@link BeltDirection#offset(byte)} from the block's orientation). Mirrors the
+ * Debug-mode overlay that draws the item path through each conveyor belt — a straight arrow for a
+ * straight belt, an L for a turn — from the block's {@link BeltShape} and orientation. Mirrors the
  * fluid pump flow arrows. Only active when {@code debug_mode} is on and the player is looking at a
  * conveyor belt while in build mode.
  */
@@ -81,10 +84,14 @@ public class ConveyorNetworkDrawer extends ModWorldDrawer {
 		// Always-on info hint: shows what (if anything) is riding the belt the player looks at.
 		drawLookedAtItemHint();
 
-		// Admin-only debug draw toggle (F1 + F10 in-game), shared with vanilla physics debug.
+		// Admin-only debug draw toggle (F1 + F10 in-game), shared with vanilla physics debug. Everything
+		// below is calibration aid only — in normal play the vanilla build arrow (pointed at the belt's
+		// output via BlockFacingArrowAPI) is what the player builds with.
 		if(!EngineSettings.P_PHYSICS_DEBUG_ACTIVE.isOn()) {
 			return;
 		}
+		// Flow path the held belt would have once placed.
+		drawHeldBeltPreview();
 		if(!(GameClient.getCurrentControl() instanceof ManagedUsableSegmentController<?> controller)) {
 			return;
 		}
@@ -97,7 +104,7 @@ public class ConveyorNetworkDrawer extends ModWorldDrawer {
 		}
 
 		long startIndex;
-		if(currentPiece.getType() == ElementRegistry.CONVEYOR_BELT.getId()) {
+		if(ElementRegistry.isConveyorBelt(currentPiece.getType())) {
 			startIndex = currentPiece.getAbsoluteIndex();
 		} else {
 			startIndex = findAdjacentConveyor(controller, currentPiece.getAbsoluteIndex());
@@ -122,7 +129,7 @@ public class ConveyorNetworkDrawer extends ModWorldDrawer {
 	 */
 	private void drawLookedAtItemHint() {
 		SegmentPiece looked = lookedAtPiece();
-		if(looked == null || looked.getType() != ElementRegistry.CONVEYOR_BELT.getId()) {
+		if(looked == null || !ElementRegistry.isConveyorBelt(looked.getType())) {
 			return;
 		}
 		if(!(looked.getSegmentController() instanceof ManagedUsableSegmentController<?> controller)) {
@@ -142,17 +149,21 @@ public class ConveyorNetworkDrawer extends ModWorldDrawer {
 		// false-trip on a busy-but-flowing belt.
 		boolean allStalled = true;
 		long runId = Long.MAX_VALUE;
-		for(long beltIndex : findConnectedConveyors(controller, looked.getAbsoluteIndex())) {
-			if(beltIndex < runId) {
-				runId = beltIndex;
-			}
-			BeltItem item = cells.get(beltIndex);
-			if(item == null) {
-				continue;
-			}
-			totals.merge(item.type, item.count, Integer::sum);
-			if(item.progress < 1.0f) {
-				allStalled = false;
+		// Hold the map monitor while reading: the server/network thread can structurally modify it
+		// concurrently (the renderer and module mutators lock the same map).
+		synchronized(cells) {
+			for(long beltIndex : findConnectedConveyors(controller, looked.getAbsoluteIndex())) {
+				if(beltIndex < runId) {
+					runId = beltIndex;
+				}
+				BeltItem item = cells.get(beltIndex);
+				if(item == null) {
+					continue;
+				}
+				totals.merge(item.type, item.count, Integer::sum);
+				if(item.progress < 1.0f) {
+					allStalled = false;
+				}
 			}
 		}
 		if(totals.isEmpty()) {
@@ -219,15 +230,138 @@ public class ConveyorNetworkDrawer extends ModWorldDrawer {
 		return null;
 	}
 
+	/**
+	 * Draws the flow path the currently held belt block would have once placed, in the cell the build
+	 * cursor is targeting. Debug-gated, like the placed-belt arrows.
+	 * <p>
+	 * The vanilla build arrow already points at the belt's output (the mod registers each shape's exit
+	 * face with {@code BlockFacingArrowAPI}), so this is not needed to build with. It stays because one
+	 * arrow can only show the output: this draws the entry leg as well, which is what you need when
+	 * checking that a turn's model, its simulated routing, and its arrow all agree.
+	 */
+	private void drawHeldBeltPreview() {
+		if(!(GameClient.getCurrentControl() instanceof ManagedUsableSegmentController<?> controller)) {
+			return;
+		}
+		PlayerInteractionControlManager picm = GameClient.getPICM();
+		if(picm == null || !picm.isInAnyStructureBuildMode()) {
+			return;
+		}
+		BeltShape shape = BeltShape.of(picm.getSelectedTypeWithSub());
+		if(shape == null) {
+			return;
+		}
+		SegmentPiece looked = BuildModeDrawer.currentPiece;
+		int side = BuildModeDrawer.currentSide;
+		if(looked == null || side < 0 || side >= Element.DIRECTIONSi.length) {
+			return;
+		}
+		// The cell the block would land in, derived exactly as BuildModeDrawer derives toBuildPos:
+		// the looked-at block offset by the face the cursor is on.
+		Vector3i offset = Element.DIRECTIONSi[side];
+		Vector3i pos = new Vector3i();
+		ElementCollection.getPosFromIndex(looked.getAbsoluteIndex(), pos);
+		pos.add(offset);
+
+		byte orientation = (byte) picm.getBlockOrientation();
+		Vector3f cameraLocal = beginArrowDraw(controller);
+		drawShapeLegs(shape, orientation, pos, cameraLocal);
+		endArrowDraw();
+
+		if(ConfigManager.isDebugMode()) {
+			// Exact numbers for calibration, so a disagreement can be reported precisely instead of
+			// eyeballed off the arrows. Axes are entity-local.
+			Hud hud = GameClient.getClientState().getWorldDrawer().getGuiDrawer().getHud();
+			hud.getHelpManager().addInfo(HudContextHelperContainer.Hos.MOUSE, ContextFilter.NORMAL,
+					shape.name() + "  orient=" + (orientation & 0xFF)
+							+ "\nin " + axisName(shape.entryFlow(orientation))
+							+ "  out " + axisName(shape.exitFlow(orientation))
+							+ "  up " + axisName(shape.surfaceNormal(orientation, 0.0f)));
+		}
+	}
+
+	/** Entity-local axis label for a unit direction, e.g. {@code +X}. */
+	private static String axisName(Vector3i d) {
+		if(d.x != 0) {
+			return d.x > 0 ? "+X" : "-X";
+		}
+		if(d.y != 0) {
+			return d.y > 0 ? "+Y" : "-Y";
+		}
+		if(d.z != 0) {
+			return d.z > 0 ? "+Z" : "-Z";
+		}
+		return "0";
+	}
+
 	private void drawTravelArrows(SegmentController controller, Set<Long> belts) {
 		SegmentBufferManager buffer = (SegmentBufferManager) controller.getSegmentBuffer();
+		Vector3f cameraLocal = beginArrowDraw(controller);
 
+		for(long blockIndex : belts) {
+			ElementCollection.getPosFromIndex(blockIndex, scratchPos);
+			SegmentPiece piece = buffer.getPointUnsave(scratchPos);
+			BeltShape shape = (piece == null) ? null : BeltShape.of(piece.getType());
+			if(shape == null) {
+				continue;
+			}
+			drawShapeLegs(shape, piece.getOrientation(), scratchPos, cameraLocal);
+		}
+
+		endArrowDraw();
+	}
+
+	/**
+	 * Draws one belt's flow path at block position {@code pos}: a single green arrow for a straight
+	 * belt, or a cyan entry leg into a green exit arrow for a turn, plus a magenta tick along the belt
+	 * surface normal. Entry and exit come straight from the block's {@link BeltShape} — the same faces
+	 * the simulator routes items through — so the drawing always matches the actual behaviour.
+	 */
+	private void drawShapeLegs(BeltShape shape, byte orientation, Vector3i pos, Vector3f cameraLocal) {
+		Vector3i in = shape.entryFlow(orientation);
+		Vector3i out = shape.exitFlow(orientation);
+		Vector3i up = shape.surfaceNormal(orientation, 0.0f);
+
+		Vector3f center = new Vector3f(pos.x - HALF_DIM.x, pos.y - HALF_DIM.y, pos.z - HALF_DIM.z);
+		// Float the drawing toward the viewer so it isn't buried inside the opaque block.
+		Vector3f toCamera = new Vector3f();
+		toCamera.sub(cameraLocal, center);
+		float distance = toCamera.length();
+		if(distance > 1.0e-4f) {
+			toCamera.scale(1.0f / distance);
+			center.scaleAdd(0.55f, toCamera, center);
+		}
+
+		if(!sameDir(in, out)) {
+			// Turn: draw the L. Cyan input leg (entry face -> elbow) shows where the stack arrives;
+			// green output arrow (elbow -> exit face) shows where it leaves.
+			GlUtil.glColor4f(0.2f, 0.7f, 1.0f, 0.95f);
+			Vector3f entry = new Vector3f(center.x - in.x * 0.4f, center.y - in.y * 0.4f, center.z - in.z * 0.4f);
+			drawSegment(entry, center);
+			GlUtil.glColor4f(0.2f, 1.0f, 0.3f, 0.95f);
+			Vector3f exit = new Vector3f(center.x + out.x * 0.4f, center.y + out.y * 0.4f, center.z + out.z * 0.4f);
+			drawArrowBetween(center, exit);
+		} else {
+			// Straight: single centred travel arrow.
+			GlUtil.glColor4f(0.2f, 1.0f, 0.3f, 0.95f);
+			drawArrow(center, out);
+		}
+
+		// Surface-up normal (magenta) — the belt's "up" face, so the model's top can be aligned too.
+		GlUtil.glColor4f(1.0f, 0.3f, 1.0f, 0.95f);
+		Vector3f upEnd = new Vector3f(center.x + up.x * 0.3f, center.y + up.y * 0.3f, center.z + up.z * 0.3f);
+		drawSegment(center, upEnd);
+	}
+
+	/**
+	 * Pushes the entity transform and the line-drawing GL state, returning the camera position in
+	 * entity-local space. Pair with {@link #endArrowDraw()}.
+	 */
+	private Vector3f beginArrowDraw(SegmentController controller) {
 		GlUtil.glPushMatrix();
 		Transform worldTransform = controller.getWorldTransformOnClient();
 		GlUtil.glMultMatrix(worldTransform);
 
-		// Camera position in entity-local space, so we can float each arrow toward the viewer
-		// (off the block surface) instead of burying it inside the opaque block.
 		Vector3f cameraLocal = new Vector3f(Controller.getCamera().getPos());
 		Transform inverse = new Transform(worldTransform);
 		inverse.inverse();
@@ -241,25 +375,10 @@ public class ConveyorNetworkDrawer extends ModWorldDrawer {
 		GlUtil.glEnable(GL11.GL_LINE_SMOOTH);
 		GL11.glLineWidth(3.0f);
 		GlUtil.glColor4f(0.2f, 1.0f, 0.3f, 0.95f);
+		return cameraLocal;
+	}
 
-		for(long blockIndex : belts) {
-			ElementCollection.getPosFromIndex(blockIndex, scratchPos);
-			SegmentPiece piece = buffer.getPointUnsave(scratchPos);
-			if(piece == null || piece.getType() != ElementRegistry.CONVEYOR_BELT.getId()) {
-				continue;
-			}
-			Vector3i d = BeltDirection.offset(piece.getOrientation());
-			Vector3f center = new Vector3f(scratchPos.x - HALF_DIM.x, scratchPos.y - HALF_DIM.y, scratchPos.z - HALF_DIM.z);
-			Vector3f toCamera = new Vector3f();
-			toCamera.sub(cameraLocal, center);
-			float distance = toCamera.length();
-			if(distance > 1.0e-4f) {
-				toCamera.scale(1.0f / distance);
-				center.scaleAdd(0.55f, toCamera, center);
-			}
-			drawArrow(center, d);
-		}
-
+	private void endArrowDraw() {
 		GlUtil.glEnable(GL11.GL_TEXTURE_2D);
 		GlUtil.glEnable(GL11.GL_DEPTH_TEST);
 		GlUtil.glDisable(GL11.GL_BLEND);
@@ -267,7 +386,6 @@ public class ConveyorNetworkDrawer extends ModWorldDrawer {
 		GlUtil.glDisable(GL11.GL_LINE_SMOOTH);
 		GL11.glLineWidth(1.0f);
 		GlUtil.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-
 		GlUtil.glPopMatrix();
 	}
 
@@ -288,7 +406,7 @@ public class ConveyorNetworkDrawer extends ModWorldDrawer {
 				}
 				ElementCollection.getPosFromIndex(neighbor, scratchNeighborPos);
 				SegmentPiece piece = buffer.getPointUnsave(scratchNeighborPos);
-				if(piece != null && piece.getType() == ElementRegistry.CONVEYOR_BELT.getId()) {
+				if(piece != null && ElementRegistry.isConveyorBelt(piece.getType())) {
 					visited.add(neighbor);
 					queue.add(neighbor);
 				}
@@ -303,7 +421,7 @@ public class ConveyorNetworkDrawer extends ModWorldDrawer {
 		for(long neighbor : neighborsOf(scratchPos)) {
 			ElementCollection.getPosFromIndex(neighbor, scratchNeighborPos);
 			SegmentPiece piece = buffer.getPointUnsave(scratchNeighborPos);
-			if(piece != null && piece.getType() == ElementRegistry.CONVEYOR_BELT.getId()) {
+			if(piece != null && ElementRegistry.isConveyorBelt(piece.getType())) {
 				return neighbor;
 			}
 		}
@@ -321,6 +439,7 @@ public class ConveyorNetworkDrawer extends ModWorldDrawer {
 		};
 	}
 
+	/** Centred travel arrow: shaft spans {@code start ± direction*0.4} with the head at the forward end. */
 	private void drawArrow(Vector3f start, Vector3i direction) {
 		Vector3f dir = new Vector3f(direction.x, direction.y, direction.z);
 		float len = (float) Math.sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
@@ -328,14 +447,33 @@ public class ConveyorNetworkDrawer extends ModWorldDrawer {
 			return;
 		}
 		dir.scale(1.0f / len);
-
+		Vector3f tail = new Vector3f(start.x - dir.x * 0.4f, start.y - dir.y * 0.4f, start.z - dir.z * 0.4f);
 		Vector3f end = new Vector3f(start.x + dir.x * 0.4f, start.y + dir.y * 0.4f, start.z + dir.z * 0.4f);
+		drawSegment(tail, end);
+		drawArrowHead(end, dir);
+	}
 
+	/** Arrow whose shaft runs {@code start -> end}, head at {@code end}. Used for a corner's output leg. */
+	private void drawArrowBetween(Vector3f start, Vector3f end) {
+		Vector3f dir = new Vector3f(end.x - start.x, end.y - start.y, end.z - start.z);
+		float len = (float) Math.sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
+		if(len < 0.001f) {
+			return;
+		}
+		dir.scale(1.0f / len);
+		drawSegment(start, end);
+		drawArrowHead(end, dir);
+	}
+
+	private void drawSegment(Vector3f a, Vector3f b) {
 		GL11.glBegin(GL11.GL_LINES);
-		GL11.glVertex3f(start.x - dir.x * 0.4f, start.y - dir.y * 0.4f, start.z - dir.z * 0.4f);
-		GL11.glVertex3f(end.x, end.y, end.z);
+		GL11.glVertex3f(a.x, a.y, a.z);
+		GL11.glVertex3f(b.x, b.y, b.z);
 		GL11.glEnd();
+	}
 
+	/** Draws a small cone arrowhead at {@code tip} pointing along the unit vector {@code dir}. */
+	private void drawArrowHead(Vector3f tip, Vector3f dir) {
 		float headLength = 0.18f;
 		float headWidth = 0.1f;
 
@@ -352,24 +490,28 @@ public class ConveyorNetworkDrawer extends ModWorldDrawer {
 		perp1.scale(headWidth);
 		perp2.scale(headWidth);
 
-		Vector3f base = new Vector3f(end.x - dir.x * headLength, end.y - dir.y * headLength, end.z - dir.z * headLength);
+		Vector3f base = new Vector3f(tip.x - dir.x * headLength, tip.y - dir.y * headLength, tip.z - dir.z * headLength);
 
 		GL11.glBegin(GL11.GL_TRIANGLES);
-		GL11.glVertex3f(end.x, end.y, end.z);
+		GL11.glVertex3f(tip.x, tip.y, tip.z);
 		GL11.glVertex3f(base.x + perp1.x, base.y + perp1.y, base.z + perp1.z);
 		GL11.glVertex3f(base.x + perp2.x, base.y + perp2.y, base.z + perp2.z);
 
-		GL11.glVertex3f(end.x, end.y, end.z);
+		GL11.glVertex3f(tip.x, tip.y, tip.z);
 		GL11.glVertex3f(base.x + perp2.x, base.y + perp2.y, base.z + perp2.z);
 		GL11.glVertex3f(base.x - perp1.x, base.y - perp1.y, base.z - perp1.z);
 
-		GL11.glVertex3f(end.x, end.y, end.z);
+		GL11.glVertex3f(tip.x, tip.y, tip.z);
 		GL11.glVertex3f(base.x - perp1.x, base.y - perp1.y, base.z - perp1.z);
 		GL11.glVertex3f(base.x - perp2.x, base.y - perp2.y, base.z - perp2.z);
 
-		GL11.glVertex3f(end.x, end.y, end.z);
+		GL11.glVertex3f(tip.x, tip.y, tip.z);
 		GL11.glVertex3f(base.x - perp2.x, base.y - perp2.y, base.z - perp2.z);
 		GL11.glVertex3f(base.x + perp1.x, base.y + perp1.y, base.z + perp1.z);
 		GL11.glEnd();
+	}
+
+	private static boolean sameDir(Vector3i a, Vector3i b) {
+		return a.x == b.x && a.y == b.y && a.z == b.z;
 	}
 }
