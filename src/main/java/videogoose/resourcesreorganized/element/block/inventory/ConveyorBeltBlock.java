@@ -2,11 +2,11 @@ package videogoose.resourcesreorganized.element.block.inventory;
 
 import api.config.BlockConfig;
 import api.utils.element.Blocks;
+import api.utils.game.BlockFacingArrowAPI;
 import org.schema.game.client.view.cubes.shapes.BlockStyle;
 import videogoose.resourcesreorganized.ResourcesReorganized;
 import videogoose.resourcesreorganized.element.block.Block;
 import videogoose.resourcesreorganized.logistics.item.belt.BeltShape;
-import videogoose.resourcesreorganized.logistics.item.belt.ConveyorArrowFacing;
 
 /**
  * Shared definition for the conveyor belt shapes.
@@ -66,21 +66,7 @@ public abstract class ConveyorBeltBlock extends Block {
 	public void postInitData() {
 		// Ids are handed out during initData, so the type -> shape lookup can only be filled now.
 		BeltShape.register(getId(), shape);
-		try {
-			// Point the vanilla build-mode arrow at this shape's output face, which for an up turn is
-			// its top rather than its forward. ConveyorArrowFacing holds the only reference to
-			// BlockFacingArrowAPI and loads here, so on a jar without that API this is a skipped
-			// override, not a failed block registration — the mod's own build preview arrows still show
-			// the true flow either way.
-			ConveyorArrowFacing.register(getId(), shape);
-		} catch(Throwable missingFacingApi) {
-			if(!facingApiWarned) {
-				facingApiWarned = true;
-				ResourcesReorganized.getInstance().logDebug(
-						"Build-mode facing arrow API not present; conveyor output direction comes from the "
-								+ "mod's own build preview instead.");
-			}
-		}
+		BlockFacingArrowAPI.register(getId(), (type, orientation) -> shape.exitSide((byte) orientation));
 	}
 
 	@Override
