@@ -8,8 +8,6 @@ import videogoose.resourcesreorganized.element.block.inventory.ConveyorBelt;
 import videogoose.resourcesreorganized.element.block.inventory.ConveyorBeltLeftTurn;
 import videogoose.resourcesreorganized.element.block.inventory.ConveyorBeltRightTurn;
 import videogoose.resourcesreorganized.element.block.inventory.ConveyorBeltUpTurn;
-import videogoose.resourcesreorganized.element.block.inventory.ItemPump;
-import videogoose.resourcesreorganized.element.block.inventory.ItemTube;
 import videogoose.resourcesreorganized.element.block.pipes.PipeFilter;
 import videogoose.resourcesreorganized.element.block.pipes.PipePump;
 import videogoose.resourcesreorganized.element.block.pipes.PipeValve;
@@ -35,8 +33,6 @@ public enum ElementRegistry {
 	CONVEYOR_BELT_LEFT_TURN(new ConveyorBeltLeftTurn()),
 	CONVEYOR_BELT_RIGHT_TURN(new ConveyorBeltRightTurn()),
 	CONVEYOR_BELT_UP_TURN(new ConveyorBeltUpTurn()),
-	ITEM_TUBE(new ItemTube()),
-	ITEM_PUMP(new ItemPump()),
 
 	//Pipe network blocks
 	PIPE_VALVE(new PipeValve()),
@@ -100,13 +96,13 @@ public enum ElementRegistry {
 		return id == Blocks.PIPE.getId() || id == Blocks.PIPE_CROSS.getId() || id == Blocks.PIPE_TEE.getId() || id == Blocks.PIPE_ELBOW.getId() || id == PIPE_VALVE.getId() || id == PIPE_FILTER.getId() || id == PIPE_PUMP.getId();
 	}
 
-	/** Any conveyor belt shape (straight or one of the turns) — each shape is a separate block id. */
+	/**
+	 * Any conveyor belt shape (straight or one of the turns) — each shape is a separate block id.
+	 * Belts are the mod's only item transport blocks: item tubes and pumps existed to carry items
+	 * vertically, which belts now do themselves via {@code BeltShape.TURN_UP}.
+	 */
 	public static boolean isConveyorBelt(short id) {
 		return BeltShape.isBelt(id);
-	}
-
-	public static boolean isItemTransport(short id) {
-		return isConveyorBelt(id) || id == ITEM_TUBE.getId() || id == ITEM_PUMP.getId();
 	}
 
 	public static boolean canInteractWithFluid(short id) {

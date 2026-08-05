@@ -38,7 +38,7 @@ import java.util.WeakHashMap;
 /**
  * Per-entity item transport system module.
  * <p>
- * Maintains the topology of conveyor and tube networks on a single segment controller and
+ * Maintains the topology of conveyor networks on a single segment controller and
  * publishes their adjacent inventories to {@link InventoryReferenceRegistry} so the global
  * logistics runtime can reach them. Persistence is deferred to phase 4 — topology is rebuilt
  * from {@link #onPlace}/{@link #onRemove} events on this entity's lifetime.
@@ -57,7 +57,6 @@ public class ItemTransportSystemModule extends SystemModule {
 	private final ManagerContainer<?> managerContainer;
 
 	private final Map<Long, ItemTransportSegment> conveyorSegments = new HashMap<>();
-	private final Map<Long, ItemTransportSegment> tubeSegments = new HashMap<>();
 	private final List<ItemTransportNetwork> networks = new ArrayList<>();
 	private final Set<String> registeredPortNodeIds = new HashSet<>();
 	private final Map<Long, BeltItem> cellItems = new HashMap<>();
@@ -75,7 +74,7 @@ public class ItemTransportSystemModule extends SystemModule {
 	}
 
 	public void onPlace(long index, short blockType, byte orientation) {
-		boolean changed = ItemTopologyMutationService.onPlace(index, blockType, orientation, conveyorSegments, tubeSegments, networks, managerContainer, debugLogger());
+		boolean changed = ItemTopologyMutationService.onPlace(index, blockType, orientation, conveyorSegments, networks, managerContainer, debugLogger());
 		if(changed) {
 			syncRegistry();
 			flagUpdatedData();
@@ -93,7 +92,7 @@ public class ItemTransportSystemModule extends SystemModule {
 			dropBeltItem(index, dropped);
 			flagUpdatedData();
 		}
-		boolean changed = ItemTopologyMutationService.onRemove(index, blockType, conveyorSegments, tubeSegments, networks, managerContainer, debugLogger());
+		boolean changed = ItemTopologyMutationService.onRemove(index, blockType, conveyorSegments, networks, managerContainer, debugLogger());
 		if(changed) {
 			syncRegistry();
 			flagUpdatedData();
@@ -133,7 +132,7 @@ public class ItemTransportSystemModule extends SystemModule {
 		for(ItemTransportNetwork net : networks) {
 			for(long nb : neighbours) {
 				if(net.memberIndices.contains(nb)) {
-					ItemTopologyMutationService.recomputePorts(net, conveyorSegments, tubeSegments, managerContainer);
+					ItemTopologyMutationService.recomputePorts(net, conveyorSegments, managerContainer);
 					changed = true;
 					break;
 				}
@@ -153,7 +152,7 @@ public class ItemTransportSystemModule extends SystemModule {
 		if(pendingRebuild) {
 			// Re-derive networks/ports from the segments restored on save load, now that the
 			// entity's blocks and inventories are available.
-			ItemTopologyMutationService.rebuildNetworks(conveyorSegments, tubeSegments, networks, managerContainer);
+			ItemTopologyMutationService.rebuildNetworks(conveyorSegments, networks, managerContainer);
 			syncRegistry();
 			pendingRebuild = false;
 		}
@@ -201,7 +200,9 @@ public class ItemTransportSystemModule extends SystemModule {
 	public void onTagSerialize(PacketWriteBuffer buffer) throws IOException {
 		buffer.writeInt(TAG_VERSION);
 		writeSegments(buffer, conveyorSegments);
-		writeSegments(buffer, tubeSegments);
+		// Second segment list: item tubes/pumps, removed once belts gained vertical turns. The slot is
+		// still written (empty) so the tag layout is unchanged and saves stay readable both ways.
+		writeSegments(buffer, Collections.emptyMap());
 		// cellItems is read by the client render thread; serialization may run off the sim thread, so
 		// hold its monitor while iterating (the renderer and the other mutators lock the same map).
 		synchronized(cellItems) {
@@ -216,9 +217,10 @@ public class ItemTransportSystemModule extends SystemModule {
 		// (version 0) must NOT wipe topology built from block-add events, or belts break on load.
 		if(version >= 1) {
 			conveyorSegments.clear();
-			tubeSegments.clear();
 			readSegments(buffer, conveyorSegments, TransportFamily.CONVEYOR);
-			readSegments(buffer, tubeSegments, TransportFamily.TUBE);
+			// Drain the old tube/pump segment list: saves written before those blocks were removed still
+			// carry it, and the bytes have to be consumed for the rest of the tag to line up.
+			readSegments(buffer, new HashMap<>(), TransportFamily.CONVEYOR);
 			pendingRebuild = true;
 		}
 		if(version >= 2) {
@@ -294,10 +296,6 @@ public class ItemTransportSystemModule extends SystemModule {
 
 	public Map<Long, ItemTransportSegment> getConveyorSegments() {
 		return conveyorSegments;
-	}
-
-	public Map<Long, ItemTransportSegment> getTubeSegments() {
-		return tubeSegments;
 	}
 
 	public SegmentController getSegmentController() {

@@ -20,14 +20,10 @@ public final class ItemRoutePlanner {
 		}
 		List<String> path = pathOpt.get();
 		int throughput = Integer.MAX_VALUE;
-		boolean usesPump = false;
 		for(int i = 0; i < path.size(); i++) {
 			String nodeId = path.get(i);
 			ItemNode node = graph.getNode(nodeId).orElse(null);
 			throughput = Math.min(throughput, node != null ? node.getThroughputPerTick() : 1);
-			if(node != null && node.getType() == ItemNodeType.PUMP) {
-				usesPump = true;
-			}
 			if(i < path.size() - 1) {
 				String next = path.get(i + 1);
 				throughput = Math.min(throughput, graph.getEdge(nodeId, next).map(ItemEdge::getCapacityPerTick).orElse(1));
@@ -36,7 +32,7 @@ public final class ItemRoutePlanner {
 		if(throughput == Integer.MAX_VALUE) {
 			throughput = 1;
 		}
-		return Optional.of(new ItemRoute(path, throughput, request.transportFamily(), request.channel(), usesPump));
+		return Optional.of(new ItemRoute(path, throughput, request.transportFamily(), request.channel()));
 	}
 
 	public Optional<ItemRoute> planRoute(String sourceNodeId, String destinationNodeId) {
@@ -66,11 +62,7 @@ public final class ItemRoutePlanner {
 		while(!queue.isEmpty()) {
 			String current = queue.removeFirst();
 			if(current.equals(destinationNodeId)) {
-				List<String> path = reconstructPath(previous, destinationNodeId);
-				if(isPathValidForRequest(path, request)) {
-					return Optional.of(path);
-				}
-				continue;
+				return Optional.of(reconstructPath(previous, destinationNodeId));
 			}
 
 			for(ItemEdge edge : graph.getOutgoingEdges(current)) {
@@ -105,20 +97,6 @@ public final class ItemRoutePlanner {
 		return path;
 	}
 
-	private boolean isPathValidForRequest(List<String> path, ItemTransferRequest request) {
-		TransportFamily family = request.transportFamily();
-		if(family == TransportFamily.TUBE && request.requirePump()) {
-			for(String nodeId : path) {
-				ItemNode node = graph.getNode(nodeId).orElse(null);
-				if(node != null && node.getType() == ItemNodeType.PUMP) {
-					return true;
-				}
-			}
-			return false;
-		}
-		return true;
-	}
-
 	private static boolean isEndpointAllowed(ItemNode node, boolean source, ItemTransferRequest request) {
 		boolean endpointRequiresPort = source ? request.sourceRequiresInventoryPort() : request.destinationRequiresInventoryPort();
 		if(endpointRequiresPort) {
@@ -136,37 +114,15 @@ public final class ItemRoutePlanner {
 		return false;
 	}
 
+	// Conveyors are the only transport family, and they carry items vertically themselves (BeltShape
+	// .TURN_UP), so neither family mixing nor a vertical restriction applies any more — a channel
+	// mismatch is all that can rule an edge or node out.
 	private static boolean isEdgeAllowed(ItemEdge edge, ItemTransferRequest request) {
-		if(!edge.supportsChannel(request.channel())) {
-			return false;
-		}
-		TransportFamily family = request.transportFamily();
-		if(family == TransportFamily.CONVEYOR) {
-			if(edge.getTransportFamily() == TransportFamily.TUBE) {
-				return false;
-			}
-			if(edge.isVertical()) {
-				return false;
-			}
-		}
-		if(family == TransportFamily.TUBE) {
-			if(edge.getTransportFamily() == TransportFamily.CONVEYOR) {
-				return false;
-			}
-			return !edge.isVertical() || request.allowVertical();
-		}
-		return true;
+		return edge.supportsChannel(request.channel());
 	}
 
-	private boolean isNodeAllowed(ItemNode node, ItemTransferRequest request) {
-		if(!node.supportsChannel(request.channel())) {
-			return false;
-		}
-		TransportFamily family = request.transportFamily();
-		if(family == TransportFamily.CONVEYOR && node.getTransportFamily() == TransportFamily.TUBE) {
-			return false;
-		}
-		return family != TransportFamily.TUBE || node.getTransportFamily() != TransportFamily.CONVEYOR;
+	private static boolean isNodeAllowed(ItemNode node, ItemTransferRequest request) {
+		return node.supportsChannel(request.channel());
 	}
 }
 

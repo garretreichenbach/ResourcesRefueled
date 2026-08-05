@@ -26,7 +26,7 @@ public class ItemTopologyCommand implements CommandInterface {
 
 	@Override
 	public String getDescription() {
-		return "Lists item transport networks (conveyor / tube) on every loaded entity. Admin only.";
+		return "Lists conveyor networks on every loaded entity. Admin only.";
 	}
 
 	@Override
@@ -47,7 +47,7 @@ public class ItemTopologyCommand implements CommandInterface {
 			SegmentController controller = module.getSegmentController();
 			String uid = controller != null ? controller.getUniqueIdentifier() : "<unknown>";
 			List<ItemTransportNetwork> networks = module.getNetworks();
-			out.append(" - ").append(uid).append(": ").append(networks.size()).append(" network(s); ").append(module.getConveyorSegments().size()).append(" conveyor block(s), ").append(module.getTubeSegments().size()).append(" tube/pump block(s)\n");
+			out.append(" - ").append(uid).append(": ").append(networks.size()).append(" network(s); ").append(module.getConveyorSegments().size()).append(" conveyor block(s)\n");
 			for(int i = 0; i < networks.size(); i++) {
 				ItemTransportNetwork net = networks.get(i);
 				out.append("    [").append(i).append("] family=").append(net.family).append(" members=").append(net.memberIndices.size()).append(" ports=").append(net.portIndices.size()).append("\n");

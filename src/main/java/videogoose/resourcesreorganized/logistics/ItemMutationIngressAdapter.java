@@ -71,8 +71,6 @@ public final class ItemMutationIngressAdapter {
 					true,
 					TransportFamily.CONVEYOR,
 					-1,
-					false,
-					false,
 					true,
 					sourceRequiresInventoryPort,
 					destinationRequiresInventoryPort);

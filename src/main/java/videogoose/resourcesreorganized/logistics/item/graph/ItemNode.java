@@ -52,12 +52,6 @@ public final class ItemNode {
 	}
 
 	private static TransportFamily inferFamily(ItemNodeType type) {
-		if(type == ItemNodeType.CONVEYOR) {
-			return TransportFamily.CONVEYOR;
-		}
-		if(type == ItemNodeType.TUBE || type == ItemNodeType.PUMP) {
-			return TransportFamily.TUBE;
-		}
-		return TransportFamily.NEUTRAL;
+		return type == ItemNodeType.CONVEYOR ? TransportFamily.CONVEYOR : TransportFamily.NEUTRAL;
 	}
 }

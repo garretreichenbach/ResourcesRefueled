@@ -41,7 +41,7 @@ public class SegmentPieceEventHandler implements SegmentPieceAddListener, Segmen
 		}
 		if(container.getModMCModule(ElementRegistry.CONVEYOR_BELT.getId()) instanceof ItemTransportSystemModule) {
 			ItemTransportSystemModule itemModule = (ItemTransportSystemModule) container.getModMCModule(ElementRegistry.CONVEYOR_BELT.getId());
-			if(ElementRegistry.isItemTransport(type)) {
+			if(ElementRegistry.isConveyorBelt(type)) {
 				itemModule.onPlace(index, type, orientation);
 			} else {
 				itemModule.onNeighborChange(index);
@@ -64,7 +64,7 @@ public class SegmentPieceEventHandler implements SegmentPieceAddListener, Segmen
 		}
 		if(container.getModMCModule(ElementRegistry.CONVEYOR_BELT.getId()) instanceof ItemTransportSystemModule) {
 			ItemTransportSystemModule itemModule = (ItemTransportSystemModule) container.getModMCModule(ElementRegistry.CONVEYOR_BELT.getId());
-			if(ElementRegistry.isItemTransport(type)) {
+			if(ElementRegistry.isConveyorBelt(type)) {
 				itemModule.onRemove(index, type);
 			} else {
 				itemModule.onNeighborChange(index);
