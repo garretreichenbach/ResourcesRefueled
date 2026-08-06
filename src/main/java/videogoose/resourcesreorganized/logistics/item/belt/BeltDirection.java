@@ -24,13 +24,22 @@ public final class BeltDirection {
 			{5, 0}, {5, 2}, {5, 1}, {5, 3}  // LEFT primary
 	};
 
-	private static final int[][] SIDE = {
-			{0, 0, 1},   // FRONT
-			{0, 0, -1},  // BACK
-			{0, 1, 0},   // TOP
-			{0, -1, 0},  // BOTTOM
-			{1, 0, 0},   // RIGHT
-			{-1, 0, 0}   // LEFT
+	/**
+	 * The six axis directions, interned. Ordered so that opposite sides are adjacent pairs
+	 * (FRONT/BACK, TOP/BOTTOM, RIGHT/LEFT), which is what makes {@link #opposite(int)} a single xor.
+	 * <p>
+	 * <b>These instances are shared.</b> {@link Vector3i} is mutable, but every direction this class
+	 * hands out is one of these six &mdash; callers must treat them as read-only. Interning matters
+	 * because direction lookups run per item per tick in {@code ConveyorBeltSimulator} and per item per
+	 * frame in {@code ConveyorItemDrawer}; allocating a fresh vector for each was pure garbage.
+	 */
+	private static final Vector3i[] SIDE = {
+			new Vector3i(0, 0, 1),   // FRONT
+			new Vector3i(0, 0, -1),  // BACK
+			new Vector3i(0, 1, 0),   // TOP
+			new Vector3i(0, -1, 0),  // BOTTOM
+			new Vector3i(1, 0, 0),   // RIGHT
+			new Vector3i(-1, 0, 0)   // LEFT
 	};
 
 	private BeltDirection() {
@@ -44,6 +53,34 @@ public final class BeltDirection {
 	/** Surface-up direction (belt normal) = the orient-cube primary orientation. */
 	public static Vector3i up(byte orientation) {
 		return side(upSide(orientation));
+	}
+
+	/**
+	 * The shared unit vector for a side id (FRONT=0..LEFT=5). Never mutate the result &mdash; see
+	 * {@link #SIDE}.
+	 */
+	public static Vector3i side(int sideId) {
+		return SIDE[sideId];
+	}
+
+	/** Side id facing opposite {@code sideId}. The table pairs opposites, so this is a xor. */
+	public static int opposite(int sideId) {
+		return sideId ^ 1;
+	}
+
+	/**
+	 * The shared unit vector equal to {@code (x, y, z)}, which must be one of the six axis directions.
+	 * Used to fold computed directions (cross products of two axes) back onto the interned instances.
+	 *
+	 * @throws IllegalArgumentException if the vector is not a unit axis direction
+	 */
+	public static Vector3i intern(int x, int y, int z) {
+		for(Vector3i v : SIDE) {
+			if(v.x == x && v.y == y && v.z == z) {
+				return v;
+			}
+		}
+		throw new IllegalArgumentException("not a unit axis direction: (" + x + ", " + y + ", " + z + ")");
 	}
 
 	/**
@@ -76,12 +113,21 @@ public final class BeltDirection {
 	}
 
 	private static int index(byte orientation) {
+		return orientationIndex(orientation);
+	}
+
+	/**
+	 * Normalises an orientation byte into {@code [0, orientationCount())}, clamping out-of-range values
+	 * to 0 the same way the decode does. Exposed so per-orientation lookup tables can be indexed with
+	 * exactly the same bounds handling.
+	 */
+	public static int orientationIndex(byte orientation) {
 		int o = orientation & 0xFF;
 		return o < ORIENT.length ? o : 0;
 	}
 
-	private static Vector3i side(int s) {
-		int[] d = SIDE[s];
-		return new Vector3i(d[0], d[1], d[2]);
+	/** Number of distinct orientation values the decode table covers. */
+	public static int orientationCount() {
+		return ORIENT.length;
 	}
 }

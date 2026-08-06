@@ -15,6 +15,12 @@ public final class BeltItem {
 	public int count;
 	public float progress;
 
+	/**
+	 * Why this stack is not advancing, or {@link StallReason#NONE} while it is moving. Set by the
+	 * server simulator and synced so the client can explain a stuck belt in world.
+	 */
+	public StallReason stall = StallReason.NONE;
+
 	public BeltItem(short type, int metaId, int count, float progress) {
 		this.type = type;
 		this.metaId = metaId;

@@ -32,8 +32,27 @@ public final class ItemTopologyMutationService {
 								  List<ItemTransportNetwork> networks,
 								  ManagerContainer<?> managerContainer,
 								  Consumer<String> debugLogger) {
-		if(!ElementRegistry.isConveyorBelt(blockType) || conveyorSegments.containsKey(index)) {
+		if(!ElementRegistry.isConveyorBelt(blockType)) {
 			return false;
+		}
+		ItemTransportSegment existing = conveyorSegments.get(index);
+		if(existing != null) {
+			if(existing.blockType() == blockType && existing.orientation() == orientation) {
+				return false;
+			}
+			// Same position, different block: the belt was swapped for another shape or re-placed at a new
+			// rotation without a remove event reaching us. Refresh the stored facts rather than keeping the
+			// old ones — the topology is what the simulator routes by, and if it disagrees with the world
+			// then items route by a block the player can no longer see, which is undiagnosable in game
+			// (the arrows, models and build cursor all read the world and would all look correct).
+			// Network membership is keyed by position and is unaffected by the swap.
+			conveyorSegments.put(index, new ItemTransportSegment(index, blockType, orientation, TransportFamily.CONVEYOR));
+			if(debugLogger != null) {
+				debugLogger.accept("[Conveyor] refreshed stale topology at " + index
+						+ ": type " + existing.blockType() + "->" + blockType
+						+ " orient " + existing.orientation() + "->" + orientation);
+			}
+			return true;
 		}
 		conveyorSegments.put(index, new ItemTransportSegment(index, blockType, orientation, TransportFamily.CONVEYOR));
 

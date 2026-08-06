@@ -30,6 +30,9 @@ import org.schema.schine.graphicsengine.core.settings.EngineSettings;
 import videogoose.resourcesreorganized.element.ElementRegistry;
 import videogoose.resourcesreorganized.logistics.item.belt.BeltItem;
 import videogoose.resourcesreorganized.logistics.item.belt.BeltShape;
+import videogoose.resourcesreorganized.logistics.item.belt.StallReason;
+import org.schema.game.client.view.gui.shiphud.HudIndicatorOverlay;
+import javax.vecmath.Vector4f;
 import videogoose.resourcesreorganized.manager.ConfigManager;
 import videogoose.resourcesreorganized.systems.ItemTransportSystemModule;
 
@@ -62,6 +65,21 @@ public class ConveyorNetworkDrawer extends ModWorldDrawer {
 	private long peakRunId = Long.MIN_VALUE;
 	private long lastMovingMillis;
 
+	/** How often the stall sweep runs at all — this walks every client belt module, so not every frame. */
+	private static final long INDICATOR_SWEEP_MS = 500;
+	/** How long before the same stuck cell announces itself again. */
+	private static final long INDICATOR_REPEAT_MS = 12_000;
+	/** Drop a cell's throttle entry once it has been quiet this long, so a new stall shows straight away. */
+	private static final long INDICATOR_FORGET_MS = 30_000;
+	/** Seconds a label spends rising and fading. */
+	private static final float INDICATOR_LIFE_SECONDS = 4.0f;
+	/** Amber: a warning about a build mistake, not an error the player cannot act on. */
+	private static final Vector4f STALL_COLOR = new Vector4f(1.0f, 0.72f, 0.2f, 1.0f);
+
+	// Per-cell throttle for the in-world stall labels.
+	private final Map<Long, Long> lastIndicatorShown = new HashMap<>();
+	private long lastIndicatorSweep;
+
 	@Override
 	public void onInit() {
 	}
@@ -83,6 +101,8 @@ public class ConveyorNetworkDrawer extends ModWorldDrawer {
 	public void draw() {
 		// Always-on info hint: shows what (if anything) is riding the belt the player looks at.
 		drawLookedAtItemHint();
+		// Occasional in-world labels explaining stuck belts, at the block that is stuck.
+		drawStallIndicators();
 
 		// Admin-only debug draw toggle (F1 + F10 in-game), shared with vanilla physics debug. Everything
 		// below is calibration aid only — in normal play the vanilla build arrow (pointed at the belt's
@@ -274,10 +294,26 @@ public class ConveyorNetworkDrawer extends ModWorldDrawer {
 			Hud hud = GameClient.getClientState().getWorldDrawer().getGuiDrawer().getHud();
 			hud.getHelpManager().addInfo(HudContextHelperContainer.Hos.MOUSE, ContextFilter.NORMAL,
 					shape.name() + "  orient=" + (orientation & 0xFF)
-							+ "\nin " + axisName(shape.entryFlow(orientation))
-							+ "  out " + axisName(shape.exitFlow(orientation))
+							+ "\nin " + axisNames(shape, orientation, true)
+							+ "  out " + axisNames(shape, orientation, false)
 							+ "  up " + axisName(shape.surfaceNormal(orientation, 0.0f)));
 		}
+	}
+
+	/**
+	 * Entity-local axis labels for all of a shape's entry or exit faces, e.g. {@code -Z} or
+	 * {@code -X/+X} for a shape with two. Comma-free so it stays readable inline in the HUD line.
+	 */
+	private static String axisNames(BeltShape shape, byte orientation, boolean entry) {
+		int n = entry ? shape.entryCount() : shape.exitCount();
+		StringBuilder sb = new StringBuilder();
+		for(int i = 0; i < n; i++) {
+			if(i > 0) {
+				sb.append('/');
+			}
+			sb.append(axisName(entry ? shape.entryFlow(orientation, i) : shape.exitFlow(orientation, i)));
+		}
+		return sb.toString();
 	}
 
 	/** Entity-local axis label for a unit direction, e.g. {@code +X}. */
@@ -292,6 +328,112 @@ public class ConveyorNetworkDrawer extends ModWorldDrawer {
 			return d.z > 0 ? "+Z" : "-Z";
 		}
 		return "0";
+	}
+
+	/**
+	 * Floats an occasional label out of any belt cell whose stack is stuck, saying why.
+	 * <p>
+	 * Deliberately intermittent and per-cell: a stalled belt is a persistent condition, so showing the
+	 * reason continuously would just be a permanent world-space annotation the player learns to ignore,
+	 * and a long line of them would be unreadable. Each cell re-announces itself on its own timer.
+	 * <p>
+	 * Purely transient stalls (a belt waiting behind an occupied one) are skipped — they resolve
+	 * themselves, and labelling every queued stack behind a busy junction is noise. Only conditions that
+	 * need the player to change something are announced.
+	 */
+	private void drawStallIndicators() {
+		long now = System.currentTimeMillis();
+		if(now - lastIndicatorSweep < INDICATOR_SWEEP_MS) {
+			return;
+		}
+		lastIndicatorSweep = now;
+
+		for(ItemTransportSystemModule module : ItemTransportSystemModule.snapshotInstances()) {
+			SegmentController controller = module.getSegmentController();
+			if(controller == null || controller.isOnServer()) {
+				continue; // client copies only
+			}
+			Transform worldTransform = controller.getWorldTransformOnClient();
+			Map<Long, BeltItem> cells = module.getCellItems();
+			// Same monitor the network thread holds while replacing this map.
+			synchronized(cells) {
+				for(Map.Entry<Long, BeltItem> entry : cells.entrySet()) {
+					BeltItem item = entry.getValue();
+					if(item == null || item.stall == null || item.stall == StallReason.NONE || item.stall.isTransient()) {
+						continue;
+					}
+					long cellIndex = entry.getKey();
+					Long last = lastIndicatorShown.get(cellIndex);
+					if(last != null && now - last < INDICATOR_REPEAT_MS) {
+						continue;
+					}
+					lastIndicatorShown.put(cellIndex, now);
+					spawnStallIndicator(worldTransform, cellIndex, item.stall, detail(controller, cellIndex, item.stall));
+				}
+			}
+		}
+		// Forget cells that are no longer stalled so a recurrence announces itself immediately.
+		lastIndicatorShown.keySet().removeIf(cell -> now - lastIndicatorShown.get(cell) > INDICATOR_FORGET_MS);
+	}
+
+	/**
+	 * Works out the specifics behind a stall so the label can name the offending block instead of just
+	 * the category. Everything here is derived client-side from the stalled cell's own shape and
+	 * orientation, so nothing extra has to be synced &mdash; the reason byte is enough to know which
+	 * question to ask.
+	 * <p>
+	 * "Next belt faces the wrong way" is only actionable once the player knows <i>which</i> belt and
+	 * <i>which</i> way, and those are exactly the two things a stall message usually leaves out.
+	 */
+	private String detail(SegmentController controller, long cellIndex, StallReason reason) {
+		SegmentBufferManager buffer = (SegmentBufferManager) controller.getSegmentBuffer();
+		ElementCollection.getPosFromIndex(cellIndex, scratchPos);
+		SegmentPiece piece = buffer.getPointUnsave(scratchPos);
+		BeltShape shape = (piece == null) ? null : BeltShape.of(piece.getType());
+		if(shape == null) {
+			return "";
+		}
+		long forward = shape.outputIndex(cellIndex, piece.getOrientation());
+		ElementCollection.getPosFromIndex(forward, scratchNeighborPos);
+
+		if(reason == StallReason.NEXT_BELT_MISAIMED) {
+			// Name the block to rotate, where it CURRENTLY takes input from, and where it needs to. Stating
+			// only the requirement is nearly useless — the player already assumes it should accept from
+			// here; what they cannot see is the side it is actually listening on. The gap between the two
+			// is the whole diagnosis, and on a turn those are different faces, not opposite ones.
+			SegmentPiece next = buffer.getPointUnsave(scratchNeighborPos);
+			BeltShape nextShape = (next == null) ? null : BeltShape.of(next.getType());
+			if(nextShape == null) {
+				return "\nblock at " + str(scratchNeighborPos) + " is not a belt";
+			}
+			Vector3i actual = new Vector3i();
+			ElementCollection.getPosFromIndex(
+					nextShape.inputIndex(forward, next.getOrientation()), actual);
+			return "\n" + nextShape.name() + " at " + str(scratchNeighborPos)
+					+ "\ntakes input from " + str(actual) + ", needs " + str(scratchPos);
+		}
+		if(reason == StallReason.NO_DESTINATION || reason == StallReason.DESTINATION_FULL) {
+			return "\nat " + str(scratchNeighborPos);
+		}
+		return "";
+	}
+
+	private static String str(Vector3i p) {
+		return "(" + p.x + ", " + p.y + ", " + p.z + ")";
+	}
+
+	private void spawnStallIndicator(Transform worldTransform, long cellIndex, StallReason reason, String detail) {
+		ElementCollection.getPosFromIndex(cellIndex, scratchPos);
+		Vector3f local = new Vector3f(
+				scratchPos.x - HALF_DIM.x,
+				scratchPos.y - HALF_DIM.y + 0.6f,
+				scratchPos.z - HALF_DIM.z);
+		Transform start = new Transform(worldTransform);
+		worldTransform.basis.transform(local);
+		start.origin.add(local);
+
+		HudIndicatorOverlay.toDrawTexts.add(new ConveyorStallIndicator(
+				start, reason.message() + detail, STALL_COLOR, INDICATOR_LIFE_SECONDS));
 	}
 
 	private void drawTravelArrows(SegmentController controller, Set<Long> belts) {
@@ -318,8 +460,6 @@ public class ConveyorNetworkDrawer extends ModWorldDrawer {
 	 * the simulator routes items through — so the drawing always matches the actual behaviour.
 	 */
 	private void drawShapeLegs(BeltShape shape, byte orientation, Vector3i pos, Vector3f cameraLocal) {
-		Vector3i in = shape.entryFlow(orientation);
-		Vector3i out = shape.exitFlow(orientation);
 		Vector3i up = shape.surfaceNormal(orientation, 0.0f);
 
 		Vector3f center = new Vector3f(pos.x - HALF_DIM.x, pos.y - HALF_DIM.y, pos.z - HALF_DIM.z);
@@ -332,19 +472,28 @@ public class ConveyorNetworkDrawer extends ModWorldDrawer {
 			center.scaleAdd(0.55f, toCamera, center);
 		}
 
-		if(!sameDir(in, out)) {
-			// Turn: draw the L. Cyan input leg (entry face -> elbow) shows where the stack arrives;
-			// green output arrow (elbow -> exit face) shows where it leaves.
-			GlUtil.glColor4f(0.2f, 0.7f, 1.0f, 0.95f);
-			Vector3f entry = new Vector3f(center.x - in.x * 0.4f, center.y - in.y * 0.4f, center.z - in.z * 0.4f);
-			drawSegment(entry, center);
+		boolean straight = shape.entryCount() == 1 && shape.exitCount() == 1
+				&& sameDir(shape.entryFlow(orientation), shape.exitFlow(orientation));
+		if(straight) {
+			// Single centred travel arrow — entry and exit share a line, so an L would just be a line.
 			GlUtil.glColor4f(0.2f, 1.0f, 0.3f, 0.95f);
-			Vector3f exit = new Vector3f(center.x + out.x * 0.4f, center.y + out.y * 0.4f, center.z + out.z * 0.4f);
-			drawArrowBetween(center, exit);
+			drawArrow(center, shape.exitFlow(orientation));
 		} else {
-			// Straight: single centred travel arrow.
+			// Draw every leg: cyan entry legs (entry face -> elbow) show where stacks arrive, green exit
+			// arrows (elbow -> exit face) where they leave. A splitter fans several greens out of one
+			// elbow, a merger several cyans in.
+			GlUtil.glColor4f(0.2f, 0.7f, 1.0f, 0.95f);
+			for(int i = 0, n = shape.entryCount(); i < n; i++) {
+				Vector3i in = shape.entryFlow(orientation, i);
+				Vector3f entry = new Vector3f(center.x - in.x * 0.4f, center.y - in.y * 0.4f, center.z - in.z * 0.4f);
+				drawSegment(entry, center);
+			}
 			GlUtil.glColor4f(0.2f, 1.0f, 0.3f, 0.95f);
-			drawArrow(center, out);
+			for(int i = 0, n = shape.exitCount(); i < n; i++) {
+				Vector3i out = shape.exitFlow(orientation, i);
+				Vector3f exit = new Vector3f(center.x + out.x * 0.4f, center.y + out.y * 0.4f, center.z + out.z * 0.4f);
+				drawArrowBetween(center, exit);
+			}
 		}
 
 		// Surface-up normal (magenta) — the belt's "up" face, so the model's top can be aligned too.

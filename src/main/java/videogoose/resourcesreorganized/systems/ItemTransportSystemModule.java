@@ -17,6 +17,7 @@ import javax.vecmath.Vector3f;
 import videogoose.resourcesreorganized.ResourcesReorganized;
 import videogoose.resourcesreorganized.element.ElementRegistry;
 import videogoose.resourcesreorganized.logistics.item.belt.BeltItem;
+import videogoose.resourcesreorganized.logistics.item.belt.StallReason;
 import videogoose.resourcesreorganized.logistics.item.belt.ConveyorBeltSimulator;
 import videogoose.resourcesreorganized.logistics.item.graph.TransportFamily;
 import videogoose.resourcesreorganized.logistics.item.runtime.InventoryReferenceRegistry;
@@ -45,7 +46,7 @@ import java.util.WeakHashMap;
  */
 public class ItemTransportSystemModule extends SystemModule {
 
-	private static final int TAG_VERSION = 2;
+	private static final int TAG_VERSION = 3;
 
 	private static final Set<ItemTransportSystemModule> INSTANCES = Collections.newSetFromMap(new WeakHashMap<>());
 
@@ -224,10 +225,11 @@ public class ItemTransportSystemModule extends SystemModule {
 			pendingRebuild = true;
 		}
 		if(version >= 2) {
-			// Replace the whole map atomically w.r.t. the render thread iterating it.
+			// Replace the whole map atomically w.r.t. the render thread iterating it. Version 3 appends a
+			// stall-reason byte per item; older tags simply leave it at NONE.
 			synchronized(cellItems) {
 				cellItems.clear();
-				readCellItems(buffer, cellItems);
+				readCellItems(buffer, cellItems, version >= 3);
 			}
 		}
 	}
@@ -241,10 +243,11 @@ public class ItemTransportSystemModule extends SystemModule {
 			buffer.writeInt(item.metaId);
 			buffer.writeInt(item.count);
 			buffer.writeFloat(item.progress);
+			buffer.writeByte(item.stall.code());
 		}
 	}
 
-	private static void readCellItems(PacketReadBuffer buffer, Map<Long, BeltItem> target) throws IOException {
+	private static void readCellItems(PacketReadBuffer buffer, Map<Long, BeltItem> target, boolean hasStall) throws IOException {
 		int count = buffer.readInt();
 		for(int i = 0; i < count; i++) {
 			long cellIndex = buffer.readLong();
@@ -252,7 +255,11 @@ public class ItemTransportSystemModule extends SystemModule {
 			int metaId = buffer.readInt();
 			int itemCount = buffer.readInt();
 			float progress = buffer.readFloat();
-			target.put(cellIndex, new BeltItem(type, metaId, itemCount, progress));
+			BeltItem item = new BeltItem(type, metaId, itemCount, progress);
+			if(hasStall) {
+				item.stall = StallReason.fromCode(buffer.readByte());
+			}
+			target.put(cellIndex, item);
 		}
 	}
 

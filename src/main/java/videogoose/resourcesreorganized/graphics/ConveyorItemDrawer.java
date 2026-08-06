@@ -192,6 +192,14 @@ public class ConveyorItemDrawer extends ModWorldDrawer {
 		float remaining = travelled;
 
 		for(int step = 0; step < MAX_WALK && remaining >= 1.0f; step++) {
+			// With one exit the client reproduces the server's routing for free. A multi-exit shape has
+			// no single answer here, so stop and let the next keyframe say where the stack actually went
+			// rather than guessing a branch and snapping back. (Syncing the chosen exit is the follow-up
+			// that lets this walk continue through splitters.)
+			if(shape.exitCount() != 1) {
+				remaining = 1.0f;
+				break;
+			}
 			long forward = shape.outputIndex(cell, orientation);
 			ElementCollection.getPosFromIndex(forward, scratchPos);
 			SegmentPiece forwardPiece = buffer.getPointUnsave(scratchPos);
